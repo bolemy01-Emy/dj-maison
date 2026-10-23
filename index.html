@@ -82,6 +82,7 @@ input[type=text]{font:inherit;width:100%;box-sizing:border-box;background:var(--
 .msg.bad{color:#ff8f8f}
 .okline{color:var(--ok);font-weight:700}
 .hints{display:flex;flex-direction:column;gap:8px}
+a.spotlink{display:flex;align-items:center;justify-content:center;text-decoration:none;background:#1ed760;color:#08240f;font-weight:800;border-radius:14px;min-height:52px;padding:12px}
 .hintbtn{background:transparent;border:1px dashed var(--gold);color:var(--gold)}
 .hint{background:var(--bg);border:1px solid var(--line);border-left:4px solid var(--gold);border-radius:12px;padding:10px 12px;display:flex;flex-direction:column;gap:2px;font-weight:600}
 </style>
@@ -837,16 +838,27 @@ async function playSong(artist,title){
         await wait(1200);
         np=await nowPlaying();
         if(np && np.is_playing){ setMsg("♪ Lecture sur : "+(np.device?.name||dev.name)); return; }
+        if(k===1){ await api("PUT","/me/player/play?device_id="+encodeURIComponent(dev.id)); }
       }
     }
     const diag = np ? ("Spotify indique : appareil « "+(np.device?.name||"?")+" », lecture "+(np.is_playing?"en cours":"arrêtée")+".")
                     : "Spotify n'indique aucune lecture en cours.";
-    setMsg("La musique ne démarre pas sur « "+dev.name+" ». "+diag+" Ouvrez Spotify sur cet appareil, lancez un titre, revenez, puis réessayez.",true);
+    if(dev.type==="Smartphone"){
+      showOpen(uri,"Le téléphone refuse de démarrer la musique en arrière-plan. Touchez le bouton ci-dessous : Spotify s'ouvre sur le bon titre, lancez-le, puis revenez au jeu.");
+    } else {
+      setMsg("La musique ne démarre pas sur « "+dev.name+" ». "+diag+" Ouvrez Spotify sur cet appareil, lancez un titre, revenez, puis réessayez.",true);
+    }
   }catch(e){ setMsg(errText(e),true); }
 }
 async function cmd(path,okMsg,after){
   try{ const r=await api("PUT",path); if(!r.ok&&r.status!==204) throw r; setMsg(okMsg); if(after) after(); }
   catch(e){ setMsg(errText(e),true); }
+}
+function showOpen(uri,txt){
+  setMsg(txt,true);
+  const box=document.getElementById("openbox"); if(!box) return;
+  const id=uri.split(":").pop();
+  box.innerHTML=`<a class="spotlink" href="https://open.spotify.com/track/${id}" target="_blank" rel="noopener">Ouvrir ce titre dans Spotify</a>`;
 }
 function setMsg(t,bad){const el=document.getElementById("msg"); if(el){el.textContent=t; el.className="msg"+(bad?" bad":"")}}
 let flash="";
@@ -942,8 +954,9 @@ function play(){
     <div class="track" aria-label="Titre ${S.idx+1} sur 7">${th.s.map((_,k)=>`<span class="${k<S.idx?"done":k===S.idx?"now":""}"></span>`).join("")}</div>
     <span class="muted small">Titre ${S.idx+1} sur 7</span>
     <button class="spotbtn" id="playb">▶ Lancer le titre</button>
-    <div class="row"><button id="pause">⏸ Pause</button><button id="resume">⏵ Reprendre</button></div>
+    <div class="row"><button id="pause">⏸ Pause</button><button id="resume">▶ Reprendre</button></div>
     <span class="msg" id="msg" aria-live="polite"></span>
+    <div id="openbox"></div>
     <div class="hints" id="hints" aria-live="polite"></div>
     ${S.revealed?`
       <div class="answer">
@@ -959,7 +972,7 @@ function play(){
   </div>
   ${scoreBoard(true)}
   <button class="ghost" id="quit">Abandonner ce thème</button>`;
-  playb.onclick=()=>playSong(a,t);
+  playb.onclick=()=>{ const ob=document.getElementById("openbox"); if(ob) ob.innerHTML=""; playSong(a,t); };
   pause.onclick=()=>cmd("/me/player/pause","Pause.");
   resume.onclick=()=>cmd("/me/player/play","♪ Lecture en cours");
   if(!S.revealed) rev.onclick=()=>{S.revealed=true;render()};
