@@ -89,7 +89,7 @@ a.spotlink{display:flex;align-items:center;justify-content:center;text-decoratio
 </head>
 <body>
 <div class="wrap" id="app"></div>
-<p class="muted small center" style="margin:24px 0 0">DJ Maison · version 8</p>
+<p class="muted small center" style="margin:24px 0 0">DJ Maison · version 9</p>
 <script>
 const THEMES = [
 {t:"La météo", s:[
@@ -717,7 +717,7 @@ function drawHints(){
 /* ---------- Spotify ---------- */
 const CLIENT_ID = "6b2284bb0701478f9eb22fbd5e5b5134";
 const REDIRECT = location.origin + location.pathname;
-const SCOPES = "user-read-playback-state user-modify-playback-state";
+const SCOPES = "user-read-playback-state user-modify-playback-state streaming user-read-email user-read-private";
 const ls = {
   get:k=>{try{return localStorage.getItem(k)}catch(e){return null}},
   set:(k,v)=>{try{localStorage.setItem(k,v)}catch(e){}},
@@ -735,7 +735,9 @@ function saveTok(j){
   ls.set("sp_token",j.access_token);
   ls.set("sp_exp",String(Date.now()+(j.expires_in-60)*1000));
   if(j.refresh_token) ls.set("sp_refresh",j.refresh_token);
+  if(j.scope) ls.set("sp_scope",j.scope);
 }
+const hasStreaming=()=>(ls.get("sp_scope")||"").split(" ").includes("streaming");
 async function tokenCall(params){
   const r=await fetch("https://accounts.spotify.com/api/token",{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body:new URLSearchParams(params)});
   const j=await r.json().catch(()=>({}));
@@ -761,7 +763,7 @@ async function getToken(){
   catch(e){ ls.del("sp_token"); ls.del("sp_refresh"); return null; }
 }
 const connected=()=>!!(ls.get("sp_refresh")||ls.get("sp_token"));
-function spLogout(){["sp_token","sp_exp","sp_refresh"].forEach(ls.del)}
+function spLogout(){["sp_token","sp_exp","sp_refresh","sp_scope"].forEach(ls.del); if(sdkPlayer){try{sdkPlayer.disconnect()}catch(e){} sdkPlayer=null; sdkId=null;}}
 
 async function api(method,path,body){
   const t=await getToken();
@@ -795,9 +797,39 @@ async function listDevices(){
   if(!r.ok) throw r;
   return r.json.devices||[];
 }
+/* ---------- Lecteur intégré (Web Playback SDK) ---------- */
+const SDK_NAME="DJ Maison (ce navigateur)";
+let sdkPlayer=null, sdkId=null, sdkErr="", sdkLoaded=false, lastSdk=false;
+window.onSpotifyWebPlaybackSDKReady=()=>{ sdkLoaded=true; initSdk(); };
+function initSdk(){
+  if(sdkPlayer||!sdkLoaded||!window.Spotify||!connected()||!hasStreaming()) return;
+  sdkPlayer=new Spotify.Player({name:SDK_NAME,getOAuthToken:cb=>{getToken().then(t=>cb(t||""))},volume:0.9});
+  sdkPlayer.addListener("ready",({device_id})=>{sdkId=device_id;sdkErr="";refreshSdk()});
+  sdkPlayer.addListener("not_ready",()=>{sdkId=null;refreshSdk()});
+  sdkPlayer.addListener("initialization_error",({message})=>{sdkErr="Ce navigateur ne peut pas servir de lecteur ("+message+").";refreshSdk()});
+  sdkPlayer.addListener("authentication_error",({message})=>{sdkErr="Autorisation refusée : déconnectez-vous puis reconnectez-vous ("+message+").";refreshSdk()});
+  sdkPlayer.addListener("account_error",({message})=>{sdkErr="Compte non accepté pour le lecteur intégré ("+message+").";refreshSdk()});
+  sdkPlayer.addListener("playback_error",({message})=>{sdkErr="Erreur de lecture ("+message+").";refreshSdk()});
+  sdkPlayer.connect();
+  refreshSdk();
+}
+function sdkStatus(){
+  if(!connected()) return "";
+  if(!hasStreaming()) return `<span class="msg bad">Lecteur intégré : autorisation manquante. Touchez « Se déconnecter », puis reconnectez-vous.</span>`;
+  if(sdkErr) return `<span class="msg bad">Lecteur intégré : ${esc(sdkErr)}</span>`;
+  if(sdkId) return `<span class="okline">● Lecteur intégré prêt : la musique sortira de cet écran.</span>`;
+  return `<span class="muted small">Lecteur intégré : démarrage…</span>`;
+}
+function refreshSdk(){const el=document.getElementById("sdkstat"); if(el) el.innerHTML=sdkStatus();}
+function unlockAudio(){
+  try{ if(sdkPlayer&&sdkPlayer.activateElement) sdkPlayer.activateElement(); }catch(e){}
+  try{ if(navigator.wakeLock&&!window._wl){ navigator.wakeLock.request("screen").then(l=>{window._wl=l;l.addEventListener("release",()=>{window._wl=null})}).catch(()=>{}); } }catch(e){}
+}
+
 async function pickDevice(){
-  const d=await listDevices();
   const saved=ls.get("sp_device");
+  if(sdkId && (!saved || saved===SDK_NAME)) return {id:sdkId,name:SDK_NAME,type:"Lecteur intégré",is_active:false,sdk:true};
+  const d=await listDevices();
   const want=isMobile?"Smartphone":"Computer";
   return (saved&&d.find(x=>x.name===saved))
     || d.find(x=>x.type===want&&x.is_active) || d.find(x=>x.type===want)
@@ -832,6 +864,7 @@ async function playSong(artist,title){
       await wait(800);
     }
     let np=null;
+    lastSdk=!!dev.sdk;
     for(let essai=1; essai<=2; essai++){
       const p=await api("PUT","/me/player/play?device_id="+encodeURIComponent(dev.id),{uris:[uri]});
       if(!p.ok && p.status!==204) throw p;
@@ -887,8 +920,9 @@ function setup(){
     ${flash?`<span class="msg${/chec|refus/.test(flash)?" bad":""}">${esc(flash)}</span>`:""}
     ${c?`<button class="ghost" id="logout">Se déconnecter</button>`:`<button class="spotbtn" id="login">Se connecter à Spotify</button>`}
     <span class="muted small">Avant de jouer : ouvrez Spotify sur l'appareil qui doit diffuser la musique, lancez n'importe quel titre, puis revenez ici.</span>
+    <div id="sdkstat">${sdkStatus()}</div>
     ${c?`<span class="eyebrow">Appareil de lecture</span>
-    <span class="small">Actuel : <b id="devname">${esc(ls.get("sp_device")||("automatique ("+(isMobile?"ce téléphone":"cet ordinateur")+")"))}</b></span>
+    <span class="small">Actuel : <b id="devname">${esc(ls.get("sp_device")||"automatique (lecteur intégré s'il est prêt)")}</b></span>
     <button class="ghost" id="devlist">Choisir l'appareil</button>
     <div class="teamlist" id="devs"></div>`:""}
   </div>
@@ -969,9 +1003,9 @@ function play(){
   </div>
   ${scoreBoard(true)}
   <button class="ghost" id="quit">Abandonner ce thème</button>`;
-  playb.onclick=()=>{ const ob=document.getElementById("openbox"); if(ob) ob.innerHTML=""; playSong(a,t); };
-  pause.onclick=()=>cmd("/me/player/pause","Pause.");
-  resume.onclick=()=>cmd("/me/player/play","♪ Lecture en cours");
+  playb.onclick=()=>{ unlockAudio(); const ob=document.getElementById("openbox"); if(ob) ob.innerHTML=""; playSong(a,t); };
+  pause.onclick=()=>{ if(lastSdk&&sdkPlayer){ sdkPlayer.pause().then(()=>setMsg("Pause.")); } else cmd("/me/player/pause","Pause."); };
+  resume.onclick=()=>{ unlockAudio(); if(lastSdk&&sdkPlayer){ sdkPlayer.resume().then(()=>setMsg("♪ Lecture en cours")); } else cmd("/me/player/play","♪ Lecture en cours"); };
   if(!S.revealed) rev.onclick=()=>{S.revealed=true;render()};
   drawHints();
   app.querySelectorAll("[data-w]").forEach(b=>b.onclick=()=>{
@@ -1019,8 +1053,9 @@ function gameEnd(){
   newteams.onclick=()=>{const p=S.played;S=fresh();S.played=p;render()};
 }
 
-spReturn().finally(()=>{ if(!connected() && S.screen!=="setup") S.screen="setup"; render(); });
+spReturn().finally(()=>{ if(!connected() && S.screen!=="setup") S.screen="setup"; render(); initSdk(); });
 
 </script>
+<script src="https://sdk.scdn.co/spotify-player.js"></script>
 </body>
 </html>
