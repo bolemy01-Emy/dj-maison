@@ -324,16 +324,31 @@ async function findTrack(artist,title){
   }
   return null;
 }
-async function pickDevice(){
+const isMobile=/Android|iPhone|iPad|Mobile/i.test(navigator.userAgent);
+async function listDevices(){
   const r=await api("GET","/me/player/devices");
   if(!r.ok) throw r;
-  const d=r.json.devices||[];
-  return d.find(x=>x.is_active)||d.find(x=>x.type==="Smartphone")||d[0]||null;
+  return r.json.devices||[];
+}
+async function pickDevice(){
+  const d=await listDevices();
+  const saved=ls.get("sp_device");
+  const want=isMobile?"Smartphone":"Computer";
+  return (saved&&d.find(x=>x.name===saved))
+    || d.find(x=>x.type===want&&x.is_active) || d.find(x=>x.type===want)
+    || d.find(x=>x.is_active) || d[0] || null;
+}
+const wait=ms=>new Promise(r=>setTimeout(r,ms));
+async function nowPlaying(){
+  const r=await api("GET","/me/player");
+  if(r.status===204||!r.ok||!r.json) return null;
+  return r.json;
 }
 function errText(e){
   if(e instanceof Error) return "Erreur : "+e.message;
   const st=e.status, m=e.json?.error?.message||"", reason=e.json?.error?.reason||"";
   if(st===401) return "Connexion à Spotify expirée : reconnectez-vous depuis l'écran d'accueil.";
+  if(st===403 && /restriction/i.test(m)) return "Spotify ne peut pas faire cette action maintenant (aucun titre en lecture ?).";
   if(st===403) return "Spotify refuse l'accès (403). Vérifiez que votre compte est inscrit dans « User Management ». "+m;
   if(st===404 || reason==="NO_ACTIVE_DEVICE") return "Aucun appareil Spotify actif. Ouvrez l'appli Spotify, lancez un titre, puis revenez.";
   if(st===429) return "Trop de demandes à Spotify : patientez quelques secondes.";
@@ -346,9 +361,21 @@ async function playSong(artist,title){
     if(!uri){ setMsg("Titre introuvable sur Spotify. Passez au suivant (bouton « Personne »).",true); return; }
     const dev=await pickDevice();
     if(!dev){ setMsg("Aucun appareil Spotify trouvé. Ouvrez l'appli Spotify, lancez un titre, puis revenez.",true); return; }
-    const p=await api("PUT","/me/player/play?device_id="+encodeURIComponent(dev.id),{uris:[uri]});
-    if(!p.ok && p.status!==204) throw p;
-    setMsg("♪ Lecture en cours");
+    if(!dev.is_active){
+      setMsg("Réveil de Spotify sur "+dev.name+"…");
+      await api("PUT","/me/player",{device_ids:[dev.id],play:false});
+      await wait(800);
+    }
+    for(let essai=1; essai<=2; essai++){
+      const p=await api("PUT","/me/player/play?device_id="+encodeURIComponent(dev.id),{uris:[uri]});
+      if(!p.ok && p.status!==204) throw p;
+      await wait(1500);
+      const np=await nowPlaying();
+      if(np && np.is_playing && np.item && np.item.uri===uri){
+        setMsg("♪ Lecture sur : "+(np.device?.name||dev.name)); return;
+      }
+    }
+    setMsg("Spotify a reçu la commande mais ne joue pas. Ouvrez l'appli Spotify quelques secondes (au premier plan), revenez, puis relancez le titre.",true);
   }catch(e){ setMsg(errText(e),true); }
 }
 async function cmd(path,okMsg){
@@ -384,7 +411,11 @@ function setup(){
     ${c?`<span class="okline">● Connecté à Spotify</span>`:`<span class="muted">Connectez votre compte Spotify Premium pour que le jeu lance les titres.</span>`}
     ${flash?`<span class="msg${/chec|refus/.test(flash)?" bad":""}">${esc(flash)}</span>`:""}
     ${c?`<button class="ghost" id="logout">Se déconnecter</button>`:`<button class="spotbtn" id="login">Se connecter à Spotify</button>`}
-    <span class="muted small">Avant de jouer : ouvrez l'appli Spotify, lancez n'importe quel titre, puis revenez ici.</span>
+    <span class="muted small">Avant de jouer : ouvrez Spotify sur l'appareil qui doit diffuser la musique, lancez n'importe quel titre, puis revenez ici.</span>
+    ${c?`<span class="eyebrow">Appareil de lecture</span>
+    <span class="small">Actuel : <b id="devname">${esc(ls.get("sp_device")||("automatique ("+(isMobile?"ce téléphone":"cet ordinateur")+")"))}</b></span>
+    <button class="ghost" id="devlist">Choisir l'appareil</button>
+    <div class="teamlist" id="devs"></div>`:""}
   </div>
   <div class="card">
     <span class="eyebrow">Les équipes</span>
@@ -409,6 +440,15 @@ function setup(){
   flash="";
   const read=()=>S.teams.forEach((t,i)=>{const v=document.getElementById("team"+i).value.trim();t.n=v||("Équipe "+(i+1))});
   if(c) logout.onclick=()=>{spLogout();render()}; else login.onclick=()=>{read();save();spLogin()};
+  if(c) devlist.onclick=async()=>{
+    const box=document.getElementById("devs"); box.innerHTML='<span class="muted small">Recherche des appareils…</span>';
+    try{
+      const d=await listDevices();
+      if(!d.length){box.innerHTML='<span class="msg bad">Aucun appareil trouvé. Ouvrez Spotify sur l\'appareil voulu, lancez un titre, puis réessayez.</span>';return;}
+      box.innerHTML=`<button data-dev="">Automatique</button>`+d.map(x=>`<button data-dev="${esc(x.name)}">${esc(x.name)} <small class="muted">(${esc(x.type)}${x.is_active?", actif":""})</small></button>`).join("");
+      box.querySelectorAll("[data-dev]").forEach(bt=>bt.onclick=()=>{const v=bt.dataset.dev; if(v)ls.set("sp_device",v); else ls.del("sp_device"); read(); render();});
+    }catch(e){ box.innerHTML=`<span class="msg bad">${esc(errText(e))}</span>`; }
+  };
   add.onclick=()=>{read();S.teams.push({n:"Équipe "+(S.teams.length+1),sets:0});render()};
   rem.onclick=()=>{read();S.teams.pop();render()};
   go.onclick=()=>{read();S.screen="pick";render()};
