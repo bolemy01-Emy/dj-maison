@@ -2,154 +2,507 @@
 <html lang="fr">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Test Spotify – DJ Maison</title>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#17112a">
+<title>DJ Maison</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700;800&family=Figtree:wght@400;500;600;700&display=swap">
 <style>
-  :root{--bg:#17112a;--card:#2b2249;--line:#3d3263;--fg:#f4eefc;--muted:#b4a8d2;--ok:#7fe0b0;--ko:#ff7a7a;--accent:#1ed760;color-scheme:dark}
-  body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif;padding:16px}
-  main{max-width:520px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
-  h1{font-size:1.3rem;margin:0}
-  .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;display:flex;flex-direction:column;gap:10px}
-  .step{font-size:.75rem;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);font-weight:700}
-  input{font:inherit;width:100%;box-sizing:border-box;background:var(--bg);color:var(--fg);border:1px solid var(--line);border-radius:10px;padding:12px}
-  button{font:inherit;font-weight:700;min-height:50px;border-radius:12px;border:none;background:var(--accent);color:#08240f;cursor:pointer}
-  button.sec{background:transparent;color:var(--fg);border:1px solid var(--line)}
-  #log{white-space:pre-wrap;font-family:ui-monospace,monospace;font-size:.85rem;background:#0d0918;border-radius:12px;padding:12px;min-height:60px}
-  .ok{color:var(--ok)} .ko{color:var(--ko)}
-  small{color:var(--muted)}
+/* Layout : une seule colonne façon platine — un disque en tête, une carte d'action, des boutons larges pour le pouce */
+:root{
+  --bg:#17112a; --bg2:#221a3b; --card:#2b2249; --line:#3d3263;
+  --fg:#f4eefc; --muted:#b4a8d2; --accent:#ff8a5c; --accent-ink:#2a1208;
+  --ok:#7fe0b0; --gold:#ffd166;
+  --display:"Unbounded","Arial Black",system-ui,sans-serif;
+  --body:"Figtree",system-ui,-apple-system,"Segoe UI",sans-serif;
+  color-scheme:dark;
+}
+html,body{background:var(--bg);color:var(--fg)}
+body{font-family:var(--body);font-size:16px;line-height:1.45;
+  padding-left:max(16px,env(safe-area-inset-left,0px));
+  padding-right:max(16px,env(safe-area-inset-right,0px));
+  padding-block:16px 32px}
+.wrap{max-width:520px;margin:0 auto;display:flex;flex-direction:column;gap:16px}
+h1,h2,h3{font-family:var(--display);margin:0;text-wrap:balance;letter-spacing:-.01em}
+h1{font-size:1.5rem}
+h2{font-size:1.25rem}
+.eyebrow{font-size:.72rem;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);font-weight:600}
+.muted{color:var(--muted)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:18px;display:flex;flex-direction:column;gap:12px}
+button{font:inherit;cursor:pointer;border:none;border-radius:14px;padding:14px 16px;font-weight:700;min-height:52px;color:var(--fg);background:var(--bg2);border:1px solid var(--line)}
+button:focus-visible,a:focus-visible,input:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
+button.primary{background:var(--accent);color:var(--accent-ink);border-color:transparent}
+button.ghost{background:transparent}
+button:disabled{opacity:.4;cursor:default}
+.row{display:flex;gap:10px;flex-wrap:wrap}
+.row>*{flex:1 1 140px}
+a.spot{display:flex;align-items:center;justify-content:center;gap:10px;text-decoration:none;background:#1ed760;color:#08240f;font-weight:800;border-radius:14px;min-height:56px;padding:14px;font-size:1.05rem}
+input[type=text]{font:inherit;width:100%;box-sizing:border-box;background:var(--bg);color:var(--fg);border:1px solid var(--line);border-radius:12px;padding:12px}
+
+/* tête : disque vinyle */
+.top{display:flex;align-items:center;gap:14px}
+.vinyl{width:56px;height:56px;flex:none;border-radius:50%;
+  background:radial-gradient(circle,var(--accent) 0 17%,var(--bg) 18% 21%,#0d0918 22% 100%);
+  box-shadow:inset 0 0 0 2px #2d2450, inset 0 0 0 9px #0d0918, inset 0 0 0 10px #241c3f, inset 0 0 0 16px #0d0918, inset 0 0 0 17px #241c3f}
+.spin .vinyl{animation:spin 2.4s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.spin .vinyl{animation:none}}
+
+/* scores */
+.scores{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px}
+.score{background:var(--bg2);border:1px solid var(--line);border-radius:14px;padding:10px 12px;display:flex;flex-direction:column;gap:2px;min-width:0}
+.score b{font-family:var(--display);font-size:1.05rem;overflow-wrap:anywhere}
+.score .sets{font-variant-numeric:tabular-nums;color:var(--gold);font-weight:700}
+.score .pts{font-variant-numeric:tabular-nums;color:var(--muted);font-size:.9rem}
+
+/* progression 7 titres */
+.track{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
+.track span{height:8px;border-radius:4px;background:var(--line)}
+.track span.done{background:var(--accent)}
+.track span.now{background:var(--gold)}
+
+.answer{background:var(--bg);border:1px dashed var(--line);border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:6px}
+.answer .big{font-family:var(--display);font-size:1.35rem;color:var(--gold)}
+.song{font-weight:700}
+
+.themes{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px}
+.themes button{min-height:64px;text-align:left;font-weight:600;display:flex;flex-direction:column;gap:2px;justify-content:center}
+.themes button small{font-weight:500;color:var(--muted)}
+.themes button.played{opacity:.5}
+.themes button.played small::after{content:" · déjà joué"}
+
+.teamlist{display:flex;flex-direction:column;gap:8px}
+.rules{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:6px;color:var(--muted)}
+.win{font-family:var(--display);font-size:1.6rem;color:var(--gold);text-align:center}
+.center{text-align:center}
+.small{font-size:.88rem}
+
+.spotbtn{background:#1ed760;color:#08240f;border-color:transparent;font-size:1.05rem;min-height:56px}
+.msg{min-height:1.4em;color:var(--ok);font-weight:600}
+.msg.bad{color:#ff8f8f}
+.okline{color:var(--ok);font-weight:700}
 </style>
 </head>
 <body>
-<main>
-  <h1>Test Spotify – DJ Maison</h1>
-
-  <div class="card">
-    <span class="step">Étape 1 · Client ID</span>
-    <label for="cid">Collez le Client ID de votre application Spotify</label>
-    <input id="cid" autocomplete="off" spellcheck="false">
-    <small>Adresse de retour à déclarer chez Spotify : <b id="redir"></b></small>
-  </div>
-
-  <div class="card">
-    <span class="step">Étape 2 · Connexion</span>
-    <button id="login">Se connecter à Spotify</button>
-    <small id="status">Non connecté.</small>
-  </div>
-
-  <div class="card">
-    <span class="step">Étape 3 · Test de lecture</span>
-    <small>Avant : ouvrez l'appli Spotify, lancez n'importe quel titre, puis revenez ici.</small>
-    <button id="devices" class="sec">1. Voir les appareils Spotify</button>
-    <button id="play">2. Lancer « Purple Rain » de Prince</button>
-  </div>
-
-  <div class="card">
-    <span class="step">Résultat</span>
-    <div id="log">Rien pour l'instant.</div>
-    <small>Faites une capture d'écran de ce cadre et envoyez-la à Claude.</small>
-  </div>
-</main>
-
+<div class="wrap" id="app"></div>
 <script>
+const THEMES = [
+{t:"La météo", s:[
+ ["Prince","Purple Rain","La pluie","Rain = pluie, dans le titre."],
+ ["The Beatles","Here Comes the Sun","Le soleil","Sun = soleil, dans le titre."],
+ ["Salvatore Adamo","Tombe la neige","La neige","Dans le titre."],
+ ["Garou & Céline Dion","Sous le vent","Le vent","Dans le titre."],
+ ["AC/DC","Thunderstruck","Le tonnerre","Thunder = tonnerre (« frappé par la foudre »)."],
+ ["Israel Kamakawiwo'ole","Somewhere Over the Rainbow","L'arc-en-ciel","Rainbow = arc-en-ciel."],
+ ["Georges Brassens","L'Orage","L'orage","Dans le titre."]]},
+{t:"Les animaux", s:[
+ ["Survivor","Eye of the Tiger","Le tigre","Tiger = tigre."],
+ ["Pow Wow","Le lion est mort ce soir","Le lion","Dans le titre."],
+ ["Elvis Presley","Hound Dog","Le chien","Hound dog = chien de chasse."],
+ ["Duran Duran","Hungry Like the Wolf","Le loup","Wolf = loup."],
+ ["Crazy Town","Butterfly","Le papillon","Butterfly = papillon."],
+ ["J.J. Lionel","La danse des canards","Le canard","Dans le titre."],
+ ["The Beatles","Blackbird","Le merle","Blackbird = merle noir."]]},
+{t:"Les prénoms", s:[
+ ["Dolly Parton","Jolene","Jolene","Le prénom est le titre."],
+ ["The Police","Roxanne","Roxanne","Le prénom est le titre."],
+ ["Michael Jackson","Billie Jean","Billie Jean","Le prénom est le titre."],
+ ["Roch Voisine","Hélène","Hélène","Le prénom est le titre."],
+ ["The Rolling Stones","Angie","Angie","Le prénom est le titre."],
+ ["The Beatles","Michelle","Michelle","Le prénom est le titre."],
+ ["Les Rita Mitsouko","Marcia Baila","Marcia","Le prénom est dans le titre."]]},
+{t:"Les nombres", s:[
+ ["Nena","99 Luftballons","99","99 ballons, dans le titre."],
+ ["The White Stripes","Seven Nation Army","7","Seven = sept."],
+ ["Lou Bega","Mambo No. 5","5","Mambo numéro 5."],
+ ["Indochine","3 nuits par semaine","3","Dans le titre."],
+ ["Bryan Adams","Summer of '69","69","L'été 69."],
+ ["The Proclaimers","I'm Gonna Be (500 Miles)","500","500 miles."],
+ ["Prince","1999","1999","Le titre est une année."]]},
+{t:"Le corps humain", s:[
+ ["Shakira","Hips Don't Lie","Les hanches","Hips = hanches."],
+ ["Alanis Morissette","Hand in My Pocket","La main","Hand = main."],
+ ["Kim Carnes","Bette Davis Eyes","Les yeux","Eyes = yeux."],
+ ["Meghan Trainor","Lips Are Movin","Les lèvres","Lips = lèvres."],
+ ["Blondie","Heart of Glass","Le cœur","Heart = cœur."],
+ ["Kenny Loggins","Footloose","Le pied","Foot = pied."],
+ ["AC/DC","Back in Black","Le dos","Back = dos (piège : ici « back » veut dire « de retour »)."]]},
+{t:"Les métiers", s:[
+ ["Georges Moustaki","Le facteur","Facteur","Dans le titre."],
+ ["Serge Gainsbourg","Le poinçonneur des Lilas","Poinçonneur","Dans le titre (employé du métro)."],
+ ["Vanessa Paradis","Joe le taxi","Chauffeur de taxi","Joe conduit un taxi."],
+ ["The Beatles","Paperback Writer","Écrivain","Writer = écrivain."],
+ ["Daniel Balavoine","Le chanteur","Chanteur","Dans le titre."],
+ ["Aqua","Doctor Jones","Docteur","Doctor = docteur."],
+ ["Pink Floyd","Another Brick in the Wall, Pt. 2","Professeur","Les élèves crient « Hey, teacher » : professeur."]]},
+{t:"À table !", s:[
+ ["France Gall","Les sucettes","Les sucettes","Dans le titre."],
+ ["The Beatles","Strawberry Fields Forever","La fraise","Strawberry = fraise."],
+ ["Harry Styles","Watermelon Sugar","La pastèque","Watermelon = pastèque."],
+ ["Don McLean","American Pie","La tarte","Pie = tarte."],
+ ["Nino Ferrer","Les cornichons","Les cornichons","Dans le titre."],
+ ["Justin Bieber","Peaches","Les pêches","Peaches = pêches."],
+ ["Robbie Williams","Candy","Le bonbon","Candy = bonbon."]]},
+{t:"Les villes", s:[
+ ["Frank Sinatra","New York, New York","New York","Dans le titre."],
+ ["Claude François","Alexandrie Alexandra","Alexandrie","Ville d'Égypte, dans le titre."],
+ ["Claude Nougaro","Toulouse","Toulouse","Dans le titre."],
+ ["Elvis Presley","Viva Las Vegas","Las Vegas","Dans le titre."],
+ ["Freddie Mercury & Montserrat Caballé","Barcelona","Barcelone","Dans le titre."],
+ ["Jacques Brel","Vesoul","Vesoul","Dans le titre."],
+ ["The Clash","London Calling","Londres","London = Londres."]]},
+{t:"Le tour du monde", s:[
+ ["Toto","Africa","L'Afrique","Dans le titre."],
+ ["Bruce Springsteen","Born in the U.S.A.","Les États-Unis","Dans le titre."],
+ ["Charles Trenet","Douce France","La France","Dans le titre."],
+ ["Luis Mariano","Mexico","Le Mexique","Dans le titre."],
+ ["Sting","Russians","La Russie","Russians = les Russes."],
+ ["Men at Work","Down Under","L'Australie","« Down Under » est le surnom de l'Australie."],
+ ["The Vapors","Turning Japanese","Le Japon","Japanese = japonais."]]},
+{t:"Le calendrier", s:[
+ ["Claude François","Le lundi au soleil","Lundi","Dans le titre."],
+ ["The Rolling Stones","Ruby Tuesday","Mardi","Tuesday = mardi."],
+ ["The Cure","Friday I'm in Love","Vendredi","Friday = vendredi."],
+ ["Whigfield","Saturday Night","Samedi","Saturday = samedi."],
+ ["U2","Sunday Bloody Sunday","Dimanche","Sunday = dimanche."],
+ ["Earth, Wind & Fire","September","Septembre","Dans le titre."],
+ ["Guns N' Roses","November Rain","Novembre","November = novembre."]]},
+{t:"En route !", s:[
+ ["The Beatles","Yellow Submarine","Le sous-marin","Submarine = sous-marin."],
+ ["Les Rita Mitsouko","Le petit train","Le train","Dans le titre."],
+ ["John Denver","Leaving on a Jet Plane","L'avion","Jet plane = avion à réaction."],
+ ["Prince","Little Red Corvette","La voiture","La Corvette est un modèle de voiture."],
+ ["Yves Montand","À bicyclette","Le vélo","Bicyclette, dans le titre."],
+ ["Elton John","Rocket Man","La fusée","Rocket = fusée."],
+ ["Rod Stewart","Sailing","Le bateau","Sailing = naviguer à la voile."]]},
+{t:"Le dressing", s:[
+ ["Elvis Presley","Blue Suede Shoes","Les chaussures","Shoes = chaussures."],
+ ["Prince","Raspberry Beret","Le béret","Beret = béret."],
+ ["Nancy Sinatra","These Boots Are Made for Walkin'","Les bottes","Boots = bottes."],
+ ["Brian Hyland","Itsy Bitsy Teenie Weenie Yellow Polkadot Bikini","Le bikini","Dans le titre."],
+ ["Élodie Frégé","La ceinture","La ceinture","Dans le titre."],
+ ["Corey Hart","Sunglasses at Night","Les lunettes de soleil","Sunglasses = lunettes de soleil."],
+ ["The Neighbourhood","Sweater Weather","Le pull","Sweater = pull."]]},
+{t:"Dans l'espace", s:[
+ ["Frank Sinatra","Fly Me to the Moon","La Lune","Moon = Lune."],
+ ["Coldplay","A Sky Full of Stars","Les étoiles","Stars = étoiles."],
+ ["Bananarama","Venus","Vénus","Dans le titre."],
+ ["Soundgarden","Black Hole Sun","Le trou noir","Black hole = trou noir."],
+ ["David Bowie","Life on Mars?","Mars","Dans le titre."],
+ ["Lena","Satellite","Le satellite","Dans le titre."],
+ ["David Bowie","Space Oddity","L'astronaute","La chanson raconte le voyage de l'astronaute Major Tom."]]},
+{t:"Au jardin", s:[
+ ["Seal","Kiss from a Rose","La rose","Rose, dans le titre."],
+ ["Yves Montand","Le temps des cerises","Les cerises","Dans le titre."],
+ ["Post Malone & Swae Lee","Sunflower","Le tournesol","Sunflower = tournesol."],
+ ["Fool's Garden","Lemon Tree","Le citronnier","Lemon tree = citronnier."],
+ ["Yves Montand","Les feuilles mortes","Les feuilles","Dans le titre."],
+ ["Miley Cyrus","Flowers","Les fleurs","Flowers = fleurs."],
+ ["The Sound of Music","Edelweiss","L'edelweiss","Fleur de montagne, dans le titre."]]},
+{t:"Le sport", s:[
+ ["Bill Conti","Gonna Fly Now (Theme from Rocky)","La boxe","Thème du film Rocky, l'histoire d'un boxeur."],
+ ["The Beach Boys","Surfin' U.S.A.","Le surf","Surfin' = surfer."],
+ ["Kraftwerk","Tour de France","Le cyclisme","Dans le titre."],
+ ["Gloria Gaynor","I Will Survive","Le football","Hymne des Bleus champions du monde en 1998."],
+ ["The Who","Pinball Wizard","Le flipper","Pinball = flipper."],
+ ["Avril Lavigne","Sk8er Boi","Le skateboard","Sk8er = skater."],
+ ["Carl Douglas","Kung Fu Fighting","Le kung-fu","Dans le titre."]]},
+{t:"C'est la fête", s:[
+ ["Stevie Wonder","Happy Birthday","L'anniversaire","Birthday = anniversaire."],
+ ["Wham!","Last Christmas","Noël","Christmas = Noël."],
+ ["Michael Jackson","Thriller","Halloween","Clip de zombies et de monstres, incontournable à Halloween."],
+ ["Bruno Mars","Marry You","Le mariage","Marry = épouser."],
+ ["ABBA","Happy New Year","Le Nouvel An","New Year = Nouvel An."],
+ ["La Compagnie Créole","Le bal masqué","Le carnaval","Bal masqué, déguisements."],
+ ["Chet Baker","My Funny Valentine","La Saint-Valentin","Valentine = Valentin."]]},
+{t:"À la maison", s:[
+ ["Claude François","Le téléphone pleure","Le téléphone","Dans le titre."],
+ ["The Buggles","Video Killed the Radio Star","La radio","Radio, dans le titre."],
+ ["Bob Dylan","Knockin' on Heaven's Door","La porte","Door = porte."],
+ ["Justin Timberlake","Mirrors","Le miroir","Mirrors = miroirs."],
+ ["Coldplay","Clocks","L'horloge","Clocks = horloges."],
+ ["Elton John","Candle in the Wind","La bougie","Candle = bougie."],
+ ["Rihanna","Umbrella","Le parapluie","Umbrella = parapluie."]]},
+{t:"L'orchestre", s:[
+ ["Bob Dylan","Mr. Tambourine Man","Le tambourin","Dans le titre."],
+ ["Georges Brassens","Les trompettes de la renommée","La trompette","Dans le titre."],
+ ["Billy Joel","Piano Man","Le piano","Dans le titre."],
+ ["The Beatles","While My Guitar Gently Weeps","La guitare","Guitar = guitare."],
+ ["Édith Piaf","L'accordéoniste","L'accordéon","Dans le titre."],
+ ["George Michael","Careless Whisper","Le saxophone","Le solo de saxophone du début est célèbre."],
+ ["Eric Weissberg","Dueling Banjos","Le banjo","Dans le titre."]]},
+{t:"En famille", s:[
+ ["Stromae","Papaoutai","Le papa","« Papa, où t'es ? »"],
+ ["Queen","Bohemian Rhapsody","La maman","Freddie Mercury chante « Mama » au début du couplet."],
+ ["Modern Talking","Brother Louie","Le frère","Brother = frère."],
+ ["Sister Sledge","We Are Family","La sœur","Sister = sœur, dans le nom du groupe (et family = famille)."],
+ ["Daniel Balavoine","Mon fils, ma bataille","Le fils","Dans le titre."],
+ ["Stevie Wonder","Isn't She Lovely","La fille","Chanson écrite pour la naissance de sa fille."],
+ ["Annie Cordy","Tata Yoyo","La tante","Tata = tante."]]},
+{t:"Les émotions", s:[
+ ["Pharrell Williams","Happy","La joie","Happy = heureux."],
+ ["Iron Maiden","Fear of the Dark","La peur","Fear = peur."],
+ ["John Lennon","Jealous Guy","La jalousie","Jealous = jaloux."],
+ ["Eric Clapton","Tears in Heaven","La tristesse","Tears = larmes."],
+ ["Elvis Presley","Love Me Tender","L'amour","Love = amour."],
+ ["Gary Jules","Mad World","La folie","Mad = fou."],
+ ["Aretha Franklin","Respect","Le respect","Dans le titre."]]}
+];
+
+/* ---------- Spotify ---------- */
+const CLIENT_ID = "6b2284bb0701478f9eb22fbd5e5b5134";
 const REDIRECT = location.origin + location.pathname;
 const SCOPES = "user-read-playback-state user-modify-playback-state";
-const $ = id => document.getElementById(id);
-const store = {
+const ls = {
   get:k=>{try{return localStorage.getItem(k)}catch(e){return null}},
   set:(k,v)=>{try{localStorage.setItem(k,v)}catch(e){}},
   del:k=>{try{localStorage.removeItem(k)}catch(e){}}
 };
-$("redir").textContent = REDIRECT;
-$("cid").value = store.get("cid") || "";
-$("cid").addEventListener("input", e => store.set("cid", e.target.value.trim()));
+function rnd(n){const a=new Uint8Array(n);crypto.getRandomValues(a);return Array.from(a,b=>("0"+b.toString(16)).slice(-2)).join("")}
+async function pkce(v){const d=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(v));return btoa(String.fromCharCode(...new Uint8Array(d))).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"")}
 
-function log(msg, cls){
-  const line = document.createElement("div");
-  if(cls) line.className = cls;
-  line.textContent = msg;
-  if($("log").textContent === "Rien pour l'instant.") $("log").textContent = "";
-  $("log").appendChild(line);
+async function spLogin(){
+  const v=rnd(48); ls.set("sp_verifier",v);
+  const p=new URLSearchParams({client_id:CLIENT_ID,response_type:"code",redirect_uri:REDIRECT,scope:SCOPES,code_challenge_method:"S256",code_challenge:await pkce(v)});
+  location.href="https://accounts.spotify.com/authorize?"+p;
 }
-
-/* ---- PKCE ---- */
-function rand(n){const a=new Uint8Array(n);crypto.getRandomValues(a);return Array.from(a,b=>("0"+b.toString(16)).slice(-2)).join("")}
-async function challenge(v){
-  const d=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(v));
-  return btoa(String.fromCharCode(...new Uint8Array(d))).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
+function saveTok(j){
+  ls.set("sp_token",j.access_token);
+  ls.set("sp_exp",String(Date.now()+(j.expires_in-60)*1000));
+  if(j.refresh_token) ls.set("sp_refresh",j.refresh_token);
 }
-
-$("login").onclick = async () => {
-  const cid = $("cid").value.trim();
-  if(!cid){ log("Collez d'abord le Client ID (étape 1).","ko"); return; }
-  const verifier = rand(48);
-  store.set("verifier", verifier);
-  const p = new URLSearchParams({
-    client_id: cid, response_type: "code", redirect_uri: REDIRECT,
-    scope: SCOPES, code_challenge_method: "S256", code_challenge: await challenge(verifier)
-  });
-  location.href = "https://accounts.spotify.com/authorize?" + p;
-};
-
-async function handleReturn(){
-  const q = new URLSearchParams(location.search);
-  if(q.get("error")){ log("Connexion refusée par Spotify : " + q.get("error"),"ko"); history.replaceState(null,"",REDIRECT); return; }
-  const code = q.get("code");
-  if(!code) return;
+async function tokenCall(params){
+  const r=await fetch("https://accounts.spotify.com/api/token",{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body:new URLSearchParams(params)});
+  const j=await r.json().catch(()=>({}));
+  if(!r.ok) throw new Error(j.error_description||j.error||("erreur "+r.status));
+  saveTok(j);
+}
+async function spReturn(){
+  const q=new URLSearchParams(location.search);
+  if(!q.get("code") && !q.get("error")) return;
   history.replaceState(null,"",REDIRECT);
-  const body = new URLSearchParams({
-    client_id: store.get("cid")||"", grant_type:"authorization_code", code,
-    redirect_uri: REDIRECT, code_verifier: store.get("verifier")||""
+  if(q.get("error")){ flash="Connexion refusée par Spotify."; return; }
+  try{
+    await tokenCall({client_id:CLIENT_ID,grant_type:"authorization_code",code:q.get("code"),redirect_uri:REDIRECT,code_verifier:ls.get("sp_verifier")||""});
+    flash="Connecté à Spotify.";
+  }catch(e){ flash="Échec de la connexion : "+e.message; }
+}
+async function getToken(){
+  const t=ls.get("sp_token"), exp=+ls.get("sp_exp");
+  if(t && Date.now()<exp) return t;
+  const rt=ls.get("sp_refresh");
+  if(!rt) return null;
+  try{ await tokenCall({client_id:CLIENT_ID,grant_type:"refresh_token",refresh_token:rt}); return ls.get("sp_token"); }
+  catch(e){ ls.del("sp_token"); ls.del("sp_refresh"); return null; }
+}
+const connected=()=>!!(ls.get("sp_refresh")||ls.get("sp_token"));
+function spLogout(){["sp_token","sp_exp","sp_refresh"].forEach(ls.del)}
+
+async function api(method,path,body){
+  const t=await getToken();
+  if(!t) return {status:401,ok:false,json:{error:{message:"Pas connecté à Spotify."}}};
+  const r=await fetch("https://api.spotify.com/v1"+path,{method,headers:{Authorization:"Bearer "+t,"Content-Type":"application/json"},body:body?JSON.stringify(body):undefined});
+  let j=null; try{j=await r.json()}catch(e){}
+  return {status:r.status,ok:r.ok,json:j};
+}
+
+const norm=s=>s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/[^a-z0-9 ]/g," ").replace(/\s+/g," ").trim();
+async function findTrack(artist,title){
+  const key="uri|"+artist+"|"+title, cached=ls.get(key);
+  if(cached) return cached;
+  const mainArtist=artist.split(/&| feat\.? | et /i)[0].trim();
+  const queries=[`track:"${title}" artist:"${mainArtist}"`, `${title} ${mainArtist}`, title];
+  const want=norm(mainArtist).split(" ")[0];
+  for(const qy of queries){
+    const r=await api("GET","/search?"+new URLSearchParams({q:qy,type:"track",limit:"10"}));
+    if(!r.ok) throw r;
+    const items=r.json?.tracks?.items||[];
+    if(!items.length) continue;
+    const good=items.find(it=>it.artists.some(a=>norm(a.name).includes(want)));
+    const pick=good||(qy===queries[0]?items[0]:null);
+    if(pick){ ls.set(key,pick.uri); return pick.uri; }
+  }
+  return null;
+}
+async function pickDevice(){
+  const r=await api("GET","/me/player/devices");
+  if(!r.ok) throw r;
+  const d=r.json.devices||[];
+  return d.find(x=>x.is_active)||d.find(x=>x.type==="Smartphone")||d[0]||null;
+}
+function errText(e){
+  if(e instanceof Error) return "Erreur : "+e.message;
+  const st=e.status, m=e.json?.error?.message||"", reason=e.json?.error?.reason||"";
+  if(st===401) return "Connexion à Spotify expirée : reconnectez-vous depuis l'écran d'accueil.";
+  if(st===403) return "Spotify refuse l'accès (403). Vérifiez que votre compte est inscrit dans « User Management ». "+m;
+  if(st===404 || reason==="NO_ACTIVE_DEVICE") return "Aucun appareil Spotify actif. Ouvrez l'appli Spotify, lancez un titre, puis revenez.";
+  if(st===429) return "Trop de demandes à Spotify : patientez quelques secondes.";
+  return "Erreur Spotify "+st+(m?" : "+m:"");
+}
+async function playSong(artist,title){
+  setMsg("Recherche du titre…");
+  try{
+    const uri=await findTrack(artist,title);
+    if(!uri){ setMsg("Titre introuvable sur Spotify. Passez au suivant (bouton « Personne »).",true); return; }
+    const dev=await pickDevice();
+    if(!dev){ setMsg("Aucun appareil Spotify trouvé. Ouvrez l'appli Spotify, lancez un titre, puis revenez.",true); return; }
+    const p=await api("PUT","/me/player/play?device_id="+encodeURIComponent(dev.id),{uris:[uri]});
+    if(!p.ok && p.status!==204) throw p;
+    setMsg("♪ Lecture en cours");
+  }catch(e){ setMsg(errText(e),true); }
+}
+async function cmd(path,okMsg){
+  try{ const r=await api("PUT",path); if(!r.ok&&r.status!==204) throw r; setMsg(okMsg); }
+  catch(e){ setMsg(errText(e),true); }
+}
+function setMsg(t,bad){const el=document.getElementById("msg"); if(el){el.textContent=t; el.className="msg"+(bad?" bad":"")}}
+let flash="";
+
+/* ---------- État du jeu ---------- */
+const KEY="djmaison-v1";
+let S = load() || fresh();
+function fresh(){return {screen:"setup",teams:[{n:"Équipe 1",sets:0},{n:"Équipe 2",sets:0}],played:[],theme:null,idx:0,revealed:false,pts:[]};}
+function load(){try{const v=localStorage.getItem(KEY);return v?JSON.parse(v):null}catch(e){return null}}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
+const app=document.getElementById("app");
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+function header(sub,spin){
+  return `<div class="top ${spin?"spin":""}"><div class="vinyl" aria-hidden="true"></div><div><h1>DJ Maison</h1><div class="muted small">${sub}</div></div></div>`;
+}
+function scoreBoard(showPts){
+  return `<div class="scores">${S.teams.map((t,i)=>`<div class="score"><b>${esc(t.n)}</b><span class="sets">${t.sets} set${t.sets>1?"s":""} / 2</span>${showPts?`<span class="pts">${S.pts[i]} pt${S.pts[i]>1?"s":""} sur ce thème</span>`:""}</div>`).join("")}</div>`;
+}
+
+function render(){save();({setup,pick,play,setEnd,gameEnd})[S.screen]();window.scrollTo(0,0)}
+
+function setup(){
+  const c=connected();
+  app.innerHTML = header("Le quiz musical à thèmes, sur un seul téléphone")+`
+  <div class="card">
+    <span class="eyebrow">Spotify</span>
+    ${c?`<span class="okline">● Connecté à Spotify</span>`:`<span class="muted">Connectez votre compte Spotify Premium pour que le jeu lance les titres.</span>`}
+    ${flash?`<span class="msg${/chec|refus/.test(flash)?" bad":""}">${esc(flash)}</span>`:""}
+    ${c?`<button class="ghost" id="logout">Se déconnecter</button>`:`<button class="spotbtn" id="login">Se connecter à Spotify</button>`}
+    <span class="muted small">Avant de jouer : ouvrez l'appli Spotify, lancez n'importe quel titre, puis revenez ici.</span>
+  </div>
+  <div class="card">
+    <span class="eyebrow">Les équipes</span>
+    <div class="teamlist">${S.teams.map((t,i)=>`<label class="small muted" for="team${i}">Équipe ${i+1}</label><input type="text" id="team${i}" value="${esc(t.n)}" maxlength="24">`).join("")}</div>
+    <div class="row">
+      <button id="add" ${S.teams.length>=4?"disabled":""}>+ Ajouter une équipe</button>
+      <button id="rem" ${S.teams.length<=2?"disabled":""}>− Retirer</button>
+    </div>
+  </div>
+  <div class="card">
+    <span class="eyebrow">Règles</span>
+    <ol class="rules">
+      <li>Le DJ choisit un thème et l'annonce à voix haute.</li>
+      <li>Il lance chaque titre. Les équipes cherchent le lien entre la chanson et le thème.</li>
+      <li>Le premier joueur qui donne la bonne réponse marque 1 point pour son équipe et devient le DJ suivant.</li>
+      <li>Après 7 titres, l'équipe qui a le plus de points gagne le set.</li>
+      <li>La première équipe à 2 sets gagne la partie.</li>
+    </ol>
+    <p class="small muted" style="margin:0">Le titre de la chanson ne s'affiche pas : le DJ peut chercher avec son équipe. Attention seulement à la notification Spotify en haut de l'écran.</p>
+  </div>
+  <button class="primary" id="go" ${c?"":"disabled"}>Choisir un thème</button>`;
+  flash="";
+  const read=()=>S.teams.forEach((t,i)=>{const v=document.getElementById("team"+i).value.trim();t.n=v||("Équipe "+(i+1))});
+  if(c) logout.onclick=()=>{spLogout();render()}; else login.onclick=()=>{read();save();spLogin()};
+  add.onclick=()=>{read();S.teams.push({n:"Équipe "+(S.teams.length+1),sets:0});render()};
+  rem.onclick=()=>{read();S.teams.pop();render()};
+  go.onclick=()=>{read();S.screen="pick";render()};
+}
+
+function pick(){
+  const left=THEMES.map((_,i)=>i).filter(i=>!S.played.includes(i));
+  app.innerHTML = header("Choisissez le thème du prochain set")+scoreBoard(false)+`
+  <button class="primary" id="rand" ${left.length?"":"disabled"}>Thème au hasard</button>
+  <div class="themes">${THEMES.map((th,i)=>`<button data-i="${i}" class="${S.played.includes(i)?"played":""}">${esc(th.t)}<small>7 titres</small></button>`).join("")}</div>
+  <div class="row"><button class="ghost" id="back">Accueil et équipes</button><button class="ghost" id="resetp">Remettre les thèmes à zéro</button></div>`;
+  rand.onclick=()=>start(left[Math.floor(Math.random()*left.length)]);
+  app.querySelectorAll(".themes button").forEach(b=>b.onclick=()=>start(+b.dataset.i));
+  back.onclick=()=>{S.screen="setup";render()};
+  resetp.onclick=()=>{S.played=[];render()};
+}
+function start(i){S.theme=i;S.idx=0;S.revealed=false;S.pts=S.teams.map(()=>0);S.screen="play";render()}
+
+function play(){
+  const th=THEMES[S.theme], [a,t,ans,why]=th.s[S.idx];
+  app.innerHTML = header("Set en cours",true)+`
+  <div class="card">
+    <span class="eyebrow">Thème</span>
+    <h2>${esc(th.t)}</h2>
+    <div class="track" aria-label="Titre ${S.idx+1} sur 7">${th.s.map((_,k)=>`<span class="${k<S.idx?"done":k===S.idx?"now":""}"></span>`).join("")}</div>
+    <span class="muted small">Titre ${S.idx+1} sur 7</span>
+    <button class="spotbtn" id="playb">▶ Lancer le titre</button>
+    <div class="row"><button id="pause">⏸ Pause</button><button id="resume">⏵ Reprendre</button></div>
+    <span class="msg" id="msg" aria-live="polite"></span>
+    ${S.revealed?`
+      <div class="answer">
+        <span class="eyebrow">Réponse</span>
+        <span class="big">${esc(ans)}</span>
+        <span class="song">${esc(t)} — ${esc(a)}</span>
+        <span class="muted small">${esc(why)}</span>
+      </div>
+      <span class="eyebrow">Qui a trouvé ?</span>
+      <div class="row">${S.teams.map((tm,i)=>`<button class="primary" data-w="${i}">${esc(tm.n)}</button>`).join("")}</div>
+      <button data-w="-1">Personne</button>
+    `:`<button id="rev">Révéler la réponse</button>`}
+  </div>
+  ${scoreBoard(true)}
+  <button class="ghost" id="quit">Abandonner ce thème</button>`;
+  playb.onclick=()=>playSong(a,t);
+  pause.onclick=()=>cmd("/me/player/pause","Pause.");
+  resume.onclick=()=>cmd("/me/player/play","♪ Lecture en cours");
+  if(!S.revealed) rev.onclick=()=>{S.revealed=true;render()};
+  app.querySelectorAll("[data-w]").forEach(b=>b.onclick=()=>{
+    const w=+b.dataset.w; if(w>=0)S.pts[w]++;
+    api("PUT","/me/player/pause").catch(()=>{});
+    if(S.idx<6){S.idx++;S.revealed=false}else{finishSet()}
+    render();
   });
-  const r = await fetch("https://accounts.spotify.com/api/token",{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body});
-  const j = await r.json();
-  if(!r.ok){ log("Échec de la connexion ("+r.status+") : "+(j.error_description||j.error),"ko"); return; }
-  store.set("token", j.access_token);
-  store.set("exp", String(Date.now() + j.expires_in*1000));
-  log("Connexion réussie.","ok");
+  quit.onclick=()=>{api("PUT","/me/player/pause").catch(()=>{});S.screen="pick";render()};
 }
 
-function token(){
-  const t = store.get("token"), e = +store.get("exp");
-  if(!t || Date.now() > e){ return null; }
-  return t;
-}
-function showStatus(){ $("status").textContent = token() ? "Connecté à Spotify." : "Non connecté."; }
-
-async function api(method, path, body){
-  const t = token();
-  if(!t){ log("Pas connecté : faites l'étape 2.","ko"); return null; }
-  const r = await fetch("https://api.spotify.com/v1"+path,{method,headers:{Authorization:"Bearer "+t,"Content-Type":"application/json"},body:body?JSON.stringify(body):undefined});
-  let j=null; try{ j = await r.json(); }catch(e){}
-  return {status:r.status, ok:r.ok, json:j};
+function finishSet(){
+  if(!S.played.includes(S.theme))S.played.push(S.theme);
+  const max=Math.max(...S.pts), win=S.pts.map((p,i)=>p===max?i:-1).filter(i=>i>=0);
+  S.lastWin = (win.length===1 && max>0) ? win[0] : -1;
+  if(S.lastWin>=0)S.teams[S.lastWin].sets++;
+  S.screen = S.teams.some(t=>t.sets>=2) ? "gameEnd" : "setEnd";
 }
 
-$("devices").onclick = async () => {
-  const r = await api("GET","/me/player/devices"); if(!r) return;
-  if(!r.ok){ log("Appareils : erreur "+r.status+" – "+(r.json?.error?.message||""),"ko"); return; }
-  const d = r.json.devices||[];
-  if(!d.length){ log("Aucun appareil trouvé. Ouvrez l'appli Spotify et lancez un titre, puis réessayez.","ko"); return; }
-  d.forEach(x=>log("Appareil : "+x.name+" ("+x.type+")"+(x.is_active?" – actif":""), x.is_active?"ok":""));
-};
+function setEnd(){
+  const w=S.lastWin;
+  app.innerHTML = header("Fin du set")+`
+  <div class="card center">
+    <span class="eyebrow">${esc(THEMES[S.theme].t)}</span>
+    ${w>=0?`<div class="win">${esc(S.teams[w].n)}</div><p style="margin:0">remporte la carte de ce thème.</p>`
+          :`<div class="win">Égalité</div><p style="margin:0">Personne ne remporte ce set. Choisissez un autre thème pour départager.</p>`}
+  </div>
+  ${scoreBoard(true)}
+  <button class="primary" id="next">Thème suivant</button>`;
+  next.onclick=()=>{S.screen="pick";render()};
+}
 
-$("play").onclick = async () => {
-  const s = await api("GET","/search?"+new URLSearchParams({q:'track:"Purple Rain" artist:Prince',type:"track",limit:"5"}));
-  if(!s) return;
-  if(!s.ok){ log("Recherche : erreur "+s.status+" – "+(s.json?.error?.message||""),"ko"); return; }
-  const items = s.json.tracks?.items||[];
-  if(!items.length){ log("Recherche : aucun résultat.","ko"); return; }
-  const tr = items[0];
-  log("Recherche OK : "+tr.name+" – "+tr.artists.map(a=>a.name).join(", "),"ok");
+function gameEnd(){
+  const w=S.teams.find(t=>t.sets>=2);
+  app.innerHTML = header("Partie terminée")+`
+  <div class="card center">
+    <span class="eyebrow">Grand vainqueur du DJ set</span>
+    <div class="win">${esc(w.n)}</div>
+    <p class="muted" style="margin:0">2 sets remportés</p>
+  </div>
+  ${scoreBoard(false)}
+  <button class="primary" id="again">Nouvelle partie, mêmes équipes</button>
+  <button id="newteams">Nouvelle partie, nouvelles équipes</button>`;
+  again.onclick=()=>{S.teams.forEach(t=>t.sets=0);S.screen="pick";render()};
+  newteams.onclick=()=>{const p=S.played;S=fresh();S.played=p;render()};
+}
 
-  const dv = await api("GET","/me/player/devices");
-  const list = dv?.ok ? (dv.json.devices||[]) : [];
-  const dev = list.find(x=>x.is_active) || list[0];
-  const qs = dev ? "?device_id="+encodeURIComponent(dev.id) : "";
-  const p = await api("PUT","/me/player/play"+qs,{uris:[tr.uri]});
-  if(p.ok || p.status===204){ log("Lecture lancée ✔ Le test est réussi.","ok"); }
-  else { log("Lecture : erreur "+p.status+" – "+(p.json?.error?.message||p.json?.error?.reason||""),"ko"); }
-};
+spReturn().finally(()=>{ if(!connected() && S.screen!=="setup") S.screen="setup"; render(); });
 
-handleReturn().then(showStatus).catch(e=>log("Erreur : "+e.message,"ko"));
 </script>
 </body>
 </html>
