@@ -81,6 +81,9 @@ input[type=text]{font:inherit;width:100%;box-sizing:border-box;background:var(--
 .msg{min-height:1.4em;color:var(--ok);font-weight:600}
 .msg.bad{color:#ff8f8f}
 .okline{color:var(--ok);font-weight:700}
+.hints{display:flex;flex-direction:column;gap:8px}
+.hintbtn{background:transparent;border:1px dashed var(--gold);color:var(--gold)}
+.hint{background:var(--bg);border:1px solid var(--line);border-left:4px solid var(--gold);border-radius:12px;padding:10px 12px;display:flex;flex-direction:column;gap:2px;font-weight:600}
 </style>
 </head>
 <body>
@@ -249,6 +252,466 @@ const THEMES = [
  ["Aretha Franklin","Respect","Le respect","Dans le titre."]]}
 ];
 
+/* ---------- Indices : [type, indice 2], dans l'ordre des titres de chaque thème ---------- */
+const HINT1 = {
+  T:"La réponse est dans le titre, en français.",
+  E:"La réponse est dans le titre, mais en anglais : il faudra traduire.",
+  D:"La réponse est dans le titre, mais en allemand.",
+  N:"La réponse est un prénom, caché dans le titre.",
+  P:"La réponse est dans les paroles, pas dans le titre.",
+  A:"La réponse se cache dans le nom de l'artiste ou du groupe.",
+  S:"La réponse vient de l'histoire de la chanson, de son clip ou de son époque.",
+  M:"Écoutez bien la musique elle-même : la réponse est dans le son.",
+  F:"La chanson vient d'un film ou d'un dessin animé : lequel ?",
+  V:"La chanson est le générique ou la musique d'une série : laquelle ?",
+  C:"La chanson vient d'une comédie musicale : laquelle ?",
+  K:"C'est de la musique classique : trouvez qui l'a composée (ou ce qu'elle représente)."
+};
+const HINTS = [
+/* La météo */ [["E","Elle tombe… et ici, elle est violette."],["E","Il se lève tous les matins."],["T","Elle tombe en flocons."],["T","On ne le voit pas, mais il souffle."],["E","Il gronde pendant l'orage, mais ce n'est pas l'orage lui-même."],["E","Il a sept couleurs."],["T","Il éclate souvent en fin d'été, avec des éclairs."]],
+/* Les animaux */ [["E","Il a des rayures, et ce n'est pas un zèbre."],["T","Le roi de la jungle… qui dort pour toujours ce soir."],["E","Le meilleur ami de l'homme."],["E","Il hurle à la lune."],["E","Avant, c'était une chenille."],["T","Il fait « coin-coin »."],["E","Un oiseau noir, et ce n'est pas le corbeau."]],
+/* Les prénoms */ [["N","La chanteuse la supplie de ne pas lui voler son homme."],["N","Le chanteur lui demande d'éteindre la lumière rouge."],["N","Le chanteur répète qu'elle n'est pas sa petite amie."],["N","Prénom de la plus belle femme de la mythologie grecque."],["N","Prénom court, qui commence comme « ange »."],["N","Il rime avec « ma belle » dans la chanson."],["N","Prénom d'une danseuse : « baila » veut dire « danse » en espagnol."]],
+/* Les nombres */ [["D","Presque cent ballons."],["E","Autant que de jours dans la semaine."],["E","Autant que de doigts sur une main."],["T","Autant que de mousquetaires, sans compter d'Artagnan."],["E","Une année de la fin des années 60."],["E","Une distance en miles : un nombre rond à trois chiffres."],["E","L'année juste avant l'an 2000."]],
+/* Le corps humain */ [["E","Shakira les bouge, et elles ne mentent pas."],["E","On en a deux, avec cinq doigts chacune."],["E","Une actrice célèbre les avait, paraît-il, irrésistibles."],["E","On s'en sert pour embrasser."],["E","Ici, il est en verre."],["E","Coupez le titre en deux : le mot est dans la première moitié."],["E","Le mot « back » a deux sens en anglais : l'un est une partie du corps."]],
+/* Les métiers */ [["T","Il passe tous les jours avec des lettres."],["T","Il faisait des petits trous dans les tickets de métro."],["S","Joe roule toute la nuit dans Paris avec des clients."],["E","Il rêve de voir son livre publié."],["T","Balavoine parle de lui-même : son métier, c'est la musique."],["E","On va le voir quand on est malade."],["P","Les enfants de la chorale s'adressent à quelqu'un de l'école."]],
+/* À table ! */ [["T","On les lèche, et elles ont un bâton."],["E","Fruit rouge, avec des petits grains à l'extérieur."],["E","Fruit vert dehors, rouge dedans."],["E","Dessert avec une pâte, souvent aux pommes aux États-Unis."],["T","Petits, verts, dans un bocal de vinaigre."],["E","Fruit à la peau toute douce, comme du velours."],["E","Ce que l'on réclame aux voisins à Halloween."]],
+/* Les villes */ [["T","La ville qui ne dort jamais."],["T","Ville d'Égypte, célèbre pour son phare antique."],["T","La ville rose."],["T","La ville des casinos, en plein désert."],["T","Elle a accueilli les Jeux olympiques de 1992."],["T","Ville de Haute-Saône que Brel ne veut plus revoir."],["E","La capitale traversée par la Tamise."]],
+/* Le tour du monde */ [["E","Le continent du Kilimandjaro."],["E","Le pays de l'Oncle Sam."],["T","Le pays de l'enfance du chanteur… et le nôtre."],["T","Le pays des sombreros et des mariachis."],["E","Le plus grand pays du monde."],["S","« Tout en bas, en dessous » : un pays de l'autre côté de la Terre, avec des kangourous."],["E","Le pays du Soleil-Levant."]],
+/* Le calendrier */ [["T","Le premier jour de la semaine."],["E","Le deuxième jour de la semaine."],["E","Le dernier jour d'école de la semaine."],["E","Le soir où l'on sort danser."],["E","Le jour où l'on se repose."],["E","Le mois de la rentrée."],["E","Le mois du 11, souvent pluvieux."]],
+/* En route ! */ [["E","Il est jaune et voyage sous l'eau."],["T","Il roule sur des rails."],["E","On le prend à l'aéroport."],["S","Corvette est une marque américaine… de quoi ?"],["T","Deux roues, des pédales."],["E","Elle décolle vers l'espace."],["E","Il avance grâce au vent."]],
+/* Le dressing */ [["E","Elles sont en daim bleu, et on les met aux pieds."],["E","Il se porte sur la tête, ici couleur framboise."],["E","Elles sont faites pour marcher, et montent plus haut que des chaussures."],["T","Jaune à pois, pour la plage."],["T","Elle tient le pantalon."],["E","Le chanteur les porte la nuit… alors qu'elles sont faites pour le soleil."],["E","Il tient chaud quand il fait froid."]],
+/* Dans l'espace */ [["E","Elle éclaire la nuit."],["E","Il y en a des milliards dans le ciel."],["T","Planète qui porte le nom de la déesse de l'amour."],["E","Rien ne peut s'en échapper, pas même la lumière."],["T","La planète rouge."],["T","Il tourne autour d'une planète."],["S","Major Tom part dans l'espace : quel est son métier ?"]],
+/* Au jardin */ [["E","Fleur à épines."],["T","Petits fruits rouges qui vont par deux."],["E","Grande fleur jaune qui suit le soleil."],["E","Arbre aux fruits jaunes et acides."],["T","Elles tombent en automne."],["E","Miley Cyrus s'en offre elle-même un bouquet."],["T","Fleur blanche des montagnes."]],
+/* Le sport */ [["S","Musique d'un film où le héros s'entraîne avant de monter sur un ring."],["E","On glisse sur les vagues."],["T","Il passe chaque juillet sur les routes."],["S","Les supporters des Bleus la chantaient en 1998."],["E","On y joue dans les cafés, avec une bille et deux manettes."],["E","Une planche à roulettes."],["T","L'art martial de Bruce Lee."]],
+/* C'est la fête */ [["E","On souffle des bougies."],["E","Le 25 décembre."],["S","Des zombies dansent dans le clip : on l'entend souvent fin octobre."],["E","On dit « oui » devant le maire."],["E","Le 1er janvier."],["S","Masques et costumes, à Venise ou à Rio."],["E","Le 14 février."]],
+/* À la maison */ [["T","Il sonne."],["E","On l'écoute en voiture."],["E","On y frappe avant d'entrer."],["E","On s'y regarde le matin."],["E","Elles donnent l'heure, accrochées au mur."],["E","Elle se souffle."],["E","On l'ouvre quand il pleut."]],
+/* L'orchestre */ [["E","Petit instrument rond, avec des grelots."],["T","Un instrument en cuivre."],["E","88 touches noires et blanches."],["E","Six cordes."],["T","Instrument du bal musette, qui se plie et se déplie."],["M","Écoutez bien l'introduction."],["E","Instrument à cordes de la musique country, au son métallique."]],
+/* En famille */ [["P","Le chanteur cherche quelqu'un qui est parti."],["P","Freddie Mercury s'adresse à quelqu'un au début du couplet."],["E","Il a les mêmes parents que vous."],["A","Regardez le nom du groupe."],["T","Balavoine parle de son enfant, un garçon."],["S","Stevie Wonder l'a écrite pour la naissance de son enfant."],["T","La sœur de papa ou de maman, en langage d'enfant."]],
+/* Les émotions */ [["E","Le contraire de triste."],["E","On la ressent dans le noir."],["E","Le sentiment de celui qui ne veut pas partager."],["E","Clapton l'a écrite après un deuil."],["E","Ce que l'on ressent pour son amoureux."],["E","Un monde qui a perdu la raison."],["T","Aretha Franklin l'épèle lettre par lettre."]]
+];
+
+/* Fusion : anciens thèmes + leurs indices, puis nouveaux thèmes */
+THEMES.forEach((th,i)=>th.s.forEach((s,k)=>{ if(s.length===4) s.push(HINTS[i][k][0],HINTS[i][k][1]); }));
+/* [artiste, titre, réponse, explication, type d'indice 1, indice 2] */
+const NEW_THEMES = [
+{t:"Disney, les classiques", s:[
+ ["Adriana Caselotti","Someday My Prince Will Come","Blanche-Neige","Chanson de « Blanche-Neige et les Sept Nains » (1937).","F","La princesse croque une pomme empoisonnée."],
+ ["Phil Harris","The Bare Necessities","Le Livre de la jungle","Chantée par l'ours Baloo.","F","Un petit garçon élevé par des loups."],
+ ["Julie Andrews","Supercalifragilisticexpialidocious","Mary Poppins","Le mot le plus long de Mary Poppins.","F","Une nounou qui arrive avec un parapluie."],
+ ["Samuel E. Wright","Under the Sea","La Petite Sirène","Chantée par le crabe Sébastien.","F","Une princesse qui rêve d'avoir des jambes."],
+ ["Céline Dion & Peabo Bryson","Beauty and the Beast","La Belle et la Bête","Chanson-titre du film de 1991.","F","Un château, une rose sous cloche, un prince maudit."],
+ ["Brad Kane & Lea Salonga","A Whole New World","Aladdin","Chantée sur le tapis volant (« Ce rêve bleu » en français).","F","Un génie dans une lampe."],
+ ["Nathan Lane","Hakuna Matata","Le Roi lion","Chantée par Timon et Pumbaa.","F","Un lionceau, un suricate et un phacochère."]]},
+{t:"Disney et Pixar d'aujourd'hui", s:[
+ ["Anaïs Delva","Libérée, délivrée","La Reine des neiges","Chantée par Elsa.","F","Une reine qui transforme tout en glace."],
+ ["Auli'i Cravalho","How Far I'll Go","Vaiana","« Le bleu lumière » en français.","F","Une jeune fille qui part en mer avec un demi-dieu."],
+ ["Carolina Gaitán","We Don't Talk About Bruno","Encanto","La famille ne parle jamais de l'oncle Bruno.","F","Une maison magique en Colombie."],
+ ["Randy Newman","You've Got a Friend in Me","Toy Story","Chanson de l'amitié entre Woody et Buzz.","F","Des jouets qui s'animent quand on a le dos tourné."],
+ ["Anthony Gonzalez","Un Poco Loco","Coco","Chantée par Miguel au pays des morts.","F","Un garçon mexicain qui rêve d'être musicien."],
+ ["Mandy Moore & Zachary Levi","I See the Light","Raiponce","La scène des lanternes.","F","Une princesse aux cheveux très, très longs."],
+ ["Phil Collins","You'll Be in My Heart","Tarzan","Phil Collins a écrit la musique du film.","F","Un homme élevé par des gorilles."]]},
+{t:"Musiques de films", s:[
+ ["John Williams","Star Wars (Main Title)","Star Wars","Le thème d'ouverture de la saga.","F","Une galaxie lointaine, très lointaine…"],
+ ["Céline Dion","My Heart Will Go On","Titanic","Chanson du film de 1997.","F","Un paquebot et un iceberg."],
+ ["Ray Parker Jr.","Ghostbusters","SOS Fantômes","Chanson du film de 1984.","F","On appelle quelqu'un quand il y a quelque chose de bizarre dans le quartier."],
+ ["Klaus Badelt","He's a Pirate","Pirates des Caraïbes","Thème du capitaine Jack Sparrow.","F","Un capitaine qui a perdu son bateau, le Black Pearl."],
+ ["John Williams","Hedwig's Theme","Harry Potter","Thème de la chouette Hedwige.","F","Une école de sorciers."],
+ ["Bill Medley & Jennifer Warnes","(I've Had) The Time of My Life","Dirty Dancing","La danse finale du film.","F","Un célèbre porté à la fin du film."],
+ ["Adele","Skyfall","James Bond","Chanson du film « Skyfall ».","F","Un espion britannique, matricule 007."]]},
+{t:"Chansons de films", s:[
+ ["Bee Gees","Stayin' Alive","La Fièvre du samedi soir","Chanson du film avec John Travolta (1977).","F","John Travolta danse sur une piste illuminée."],
+ ["Berlin","Take My Breath Away","Top Gun","Chanson du film avec Tom Cruise (1986).","F","Des pilotes de chasse américains."],
+ ["Eminem","Lose Yourself","8 Mile","Film inspiré de la jeunesse d'Eminem.","F","Un rappeur de Detroit joue presque son propre rôle."],
+ ["Lady Gaga & Bradley Cooper","Shallow","A Star Is Born","Chanson du film de 2018.","F","Une chanteuse inconnue devient une star."],
+ ["Whitney Houston","I Will Always Love You","Bodyguard","Whitney Houston joue aussi dans le film.","F","Un garde du corps protège une chanteuse."],
+ ["Will Smith","Men in Black","Men in Black","Chanson-titre, chantée par l'acteur principal.","F","Des agents en costume noir surveillent les extraterrestres."],
+ ["Simon & Garfunkel","Mrs. Robinson","Le Lauréat","Chanson du film de 1967 avec Dustin Hoffman.","F","Un jeune diplômé et une femme plus âgée."]]},
+{t:"Le cinéma européen", s:[
+ ["Richard Sanderson","Reality","La Boum","Le slow du film avec Sophie Marceau.","F","Le premier film de Sophie Marceau."],
+ ["Yann Tiersen","Comptine d'un autre été, l'après-midi","Le Fabuleux Destin d'Amélie Poulain","Musique du film de 1999.","F","Une jeune femme de Montmartre qui aide les autres en secret."],
+ ["Les Petits Chanteurs de Saint-Marc","Vois sur ton chemin","Les Choristes","Chantée par la chorale du film.","F","Un surveillant crée une chorale dans un internat."],
+ ["Ludovico Einaudi","Una mattina","Intouchables","Musique du film avec Omar Sy.","F","Un homme en fauteuil roulant et son aide à domicile."],
+ ["Ennio Morricone","Chi Mai","Le Professionnel","Musique du film avec Jean-Paul Belmondo.","F","Un agent secret abandonné par son pays, joué par Bébel."],
+ ["Michel Legrand","Les Parapluies de Cherbourg","Les Parapluies de Cherbourg","Film entièrement chanté, avec Catherine Deneuve.","F","Une ville de la Manche et une boutique de parapluies."],
+ ["Ennio Morricone","Once Upon a Time in the West","Il était une fois dans l'Ouest","Western de Sergio Leone (1968).","F","Un western et un harmonica."]]},
+{t:"Acteurs et actrices", s:[
+ ["Dalida","Paroles, paroles","Alain Delon","Il parle dans la chanson, en duo avec Dalida.","A","Le Samouraï, Le Guépard, La Piscine…"],
+ ["Brigitte Bardot","Harley Davidson","Brigitte Bardot","Elle chante cette chanson de Gainsbourg.","A","Une actrice célèbre de « Et Dieu… créa la femme »."],
+ ["Bananarama","Robert De Niro's Waiting","Robert De Niro","Son nom est dans le titre.","E","L'acteur de « Taxi Driver »."],
+ ["Vanessa Paradis","Marilyn & John","Marilyn Monroe","Chanson sur Marilyn Monroe et John Kennedy.","S","Une actrice blonde dont la robe blanche s'envole."],
+ ["Lady Gaga","John Wayne","John Wayne","Son nom est le titre.","E","Le cow-boy le plus célèbre du cinéma américain."],
+ ["Bourvil","La tactique du gendarme","Bourvil","Il chante lui-même.","A","Le partenaire de Louis de Funès dans « Le Corniaud »."],
+ ["Jean Gabin","Maintenant je sais","Jean Gabin","Il chante (et parle) cette chanson à la fin de sa vie.","A","L'acteur de « La Grande Illusion » et du commissaire Maigret."]]},
+{t:"Séries télé", s:[
+ ["The Rembrandts","I'll Be There for You","Friends","Générique de la série.","V","Six amis à New York et un café, le Central Perk."],
+ ["Ramin Djawadi","Main Title","Game of Thrones","Générique de la série.","V","Un trône de fer et des dragons."],
+ ["Kyle Dixon & Michael Stein","Stranger Things","Stranger Things","Générique de la série.","V","Des enfants à vélo, des années 80, un monde à l'envers."],
+ ["Manu Pilas","Bella Ciao","La Casa de Papel","La chanson des braqueurs de la série.","V","Des braqueurs en combinaison rouge et masque de Dalí."],
+ ["Danny Elfman","The Simpsons Main Title Theme","Les Simpson","Générique du dessin animé.","V","Une famille jaune à Springfield."],
+ ["Lalo Schifrin","Mission: Impossible Theme","Mission impossible","Thème de la série, repris dans les films.","V","« Ce message s'autodétruira dans cinq secondes. »"],
+ ["The Cramps","Goo Goo Muck","Mercredi","La danse célèbre de Mercredi Addams.","V","Une fille en noir qui ne sourit jamais, dans la famille Addams."]]},
+{t:"Dessins animés d'autrefois", s:[
+ ["Jason Paige","Pokémon Theme","Pokémon","Générique du dessin animé.","V","« Attrapez-les tous ! »"],
+ ["Hironobu Kageyama","CHA-LA HEAD-CHA-LA","Dragon Ball Z","Générique japonais.","V","Sangoku et les boules de cristal."],
+ ["Noam","Goldorak","Goldorak","Générique français.","T","Un robot géant venu d'Euphor."],
+ ["Jean-Jacques Debout","Capitaine Flam","Capitaine Flam","Générique français.","T","Un héros de l'espace, « pas de ce monde »."],
+ ["Noam","Les mystérieuses cités d'or","Les Mystérieuses Cités d'or","Générique français.","T","Esteban, Zia et Tao cherchent des villes en or."],
+ ["Painty the Pirate","SpongeBob SquarePants Theme Song","Bob l'éponge","Générique du dessin animé.","V","Il habite dans un ananas sous la mer."],
+ ["Eric Charden","Albator 78","Albator","Générique français.","T","Un pirate de l'espace balafré."]]},
+{t:"Les boissons", s:[
+ ["Kelis","Milkshake","Le milkshake","Dans le titre.","E","Lait battu avec de la glace."],
+ ["Oldelaf","Le café","Le café","Dans le titre.","T","Noir, on le boit le matin."],
+ ["Oasis","Champagne Supernova","Le champagne","Dans le titre.","E","Il pétille pour les grandes occasions."],
+ ["The 1975","Chocolate","Le chocolat","Dans le titre.","E","Chaud, on le boit au petit déjeuner."],
+ ["The Champs","Tequila","La tequila","Le seul mot chanté de ce morceau.","T","Alcool mexicain, à base d'agave."],
+ ["Lana Del Rey","Cola","Le cola","Dans le titre.","E","Une boisson gazeuse brune."],
+ ["Doris Day","Tea for Two","Le thé","Tea = thé.","E","Les Anglais le boivent à 17 heures."]]},
+{t:"L'eau", s:[
+ ["Charles Trenet","La mer","La mer","Dans le titre.","T","Elle a des vagues et du sel."],
+ ["Billie Eilish","Ocean Eyes","L'océan","Ocean = océan.","E","Plus grand que la mer."],
+ ["Justin Timberlake","Cry Me a River","La rivière","River = rivière.","E","Elle coule jusqu'au fleuve."],
+ ["TLC","Waterfalls","La cascade","Waterfalls = chutes d'eau.","E","L'eau tombe de haut, comme au Niagara."],
+ ["Weezer","Island in the Sun","L'île","Island = île.","E","Entourée d'eau de tous les côtés."],
+ ["Deep Purple","Smoke on the Water","L'eau","Water = eau (de la fumée sur le lac Léman).","E","Elle coule du robinet."],
+ ["Michel Sardou","Les lacs du Connemara","Le lac","Dans le titre.","T","Étendue d'eau douce, entourée de terre."]]},
+{t:"Métaux et pierres précieuses", s:[
+ ["Rihanna","Diamonds","Le diamant","Diamonds = diamants.","E","La pierre la plus dure."],
+ ["Neil Young","Heart of Gold","L'or","Gold = or.","E","Le métal de la première place."],
+ ["Kaiser Chiefs","Ruby","Le rubis","Ruby = rubis.","E","Pierre précieuse rouge."],
+ ["David Guetta","Titanium","Le titane","Dans le titre.","E","Métal très léger et très solide."],
+ ["Black Sabbath","Iron Man","Le fer","Iron = fer.","E","Le métal qui rouille."],
+ ["Fleetwood Mac","Silver Springs","L'argent","Silver = argent (le métal).","E","Le métal de la deuxième place."],
+ ["Pearl Jam","Alive","La perle","Pearl = perle, dans le nom du groupe.","A","Elle naît dans une huître."]]},
+{t:"Héros et justiciers", s:[
+ ["Neal Hefti","Batman Theme","Batman","Générique de la série des années 60.","T","Il protège Gotham City."],
+ ["Five for Fighting","Superman (It's Not Easy)","Superman","Dans le titre.","T","Il vient de la planète Krypton."],
+ ["Michael Bublé","Spider-Man Theme","Spider-Man","Générique du dessin animé repris par Michael Bublé.","T","Il tisse des toiles."],
+ ["Henri Salvador","Zorro est arrivé","Zorro","Dans le titre.","T","Il signe d'un Z avec son épée."],
+ ["Bryan Adams","(Everything I Do) I Do It for You","Robin des Bois","Chanson du film « Robin des Bois, prince des voleurs » (1991).","F","Il vole aux riches pour donner aux pauvres."],
+ ["John Williams","Raiders March","Indiana Jones","Thème du célèbre archéologue.","F","Un archéologue avec un fouet et un chapeau."],
+ ["Lillias White","Zero to Hero","Hercule","Chanson du dessin animé Disney (1997).","F","Le fils de Zeus, d'une force incroyable."]]},
+{t:"La royauté", s:[
+ ["ABBA","Dancing Queen","La reine","Queen = reine.","E","Elle porte une couronne et règne aux côtés du roi."],
+ ["Roger Miller","King of the Road","Le roi","King = roi.","E","Il règne sur son royaume."],
+ ["Coldplay","Princess of China","La princesse","Princess = princesse.","E","La fille du roi."],
+ ["Adam and the Ants","Prince Charming","Le prince","Prince charmant.","E","Il réveille la princesse d'un baiser."],
+ ["Gene Chandler","Duke of Earl","Le duc","Duke = duc.","E","Titre de noblesse, juste en dessous du prince."],
+ ["Muse","Knights of Cydonia","Le chevalier","Knights = chevaliers.","E","Il porte une armure et sert le roi."],
+ ["Panic! At The Disco","Emperor's New Clothes","L'empereur","Emperor = empereur.","E","Napoléon en était un."]]},
+{t:"Lieux célèbres", s:[
+ ["Joe Dassin","Les Champs-Élysées","Les Champs-Élysées","Dans le titre.","T","La plus belle avenue de Paris, avec l'Arc de triomphe."],
+ ["Pascal Danel","Les neiges du Kilimandjaro","Le Kilimandjaro","Dans le titre.","T","Le plus haut sommet d'Afrique."],
+ ["Chuck Berry","Route 66","La Route 66","Dans le titre.","E","Une route mythique qui traverse les États-Unis."],
+ ["Barry Manilow","Copacabana","Copacabana","Dans le titre.","T","Une plage célèbre de Rio de Janeiro."],
+ ["The Beatles","Penny Lane","Penny Lane","Une vraie rue de Liverpool.","E","Une rue de la ville natale des Beatles."],
+ ["ABBA","Waterloo","Waterloo","Dans le titre.","T","Le lieu de la défaite de Napoléon."],
+ ["Eagles","Hotel California","La Californie","Dans le titre.","E","L'État américain d'Hollywood."]]},
+{t:"Prénoms de garçons", s:[
+ ["Elton John","Daniel","Daniel","Le prénom est le titre.","N","Le prénom d'un prophète jeté dans la fosse aux lions."],
+ ["Chuck Berry","Johnny B. Goode","Johnny","Le prénom est dans le titre.","N","Comme Hallyday."],
+ ["The Beatles","Hey Jude","Jude","Le prénom est dans le titre.","N","Un prénom court qui commence par J."],
+ ["Michael Jackson","Ben","Ben","Le prénom est le titre (un rat, dans le film).","N","Trois lettres, et c'est le nom d'un rat dans un film."],
+ ["Alain Bashung","Gaby oh Gaby","Gaby","Le prénom est dans le titre.","N","Le diminutif de Gabriel."],
+ ["Toni Basil","Mickey","Mickey","Le prénom est le titre.","N","Comme la souris de Disney."],
+ ["ABBA","Fernando","Fernando","Le prénom est le titre.","N","Un prénom espagnol, comme Fernand en français."]]},
+{t:"Prénoms de filles", s:[
+ ["Derek & The Dominos","Layla","Layla","Le prénom est le titre.","N","Un prénom qui veut dire « nuit » en arabe."],
+ ["The Kinks","Lola","Lola","Le prénom est le titre.","N","Quatre lettres, deux fois la lettre L."],
+ ["Mark Ronson & Amy Winehouse","Valerie","Valérie","Le prénom est le titre.","N","Un prénom français qui commence par V."],
+ ["Toto","Rosanna","Rosanna","Le prénom est le titre.","N","Un prénom qui contient une fleur."],
+ ["Neil Diamond","Sweet Caroline","Caroline","Le prénom est dans le titre.","N","Comme la poupée des livres « Caroline »."],
+ ["The Beatles","Lucy in the Sky with Diamonds","Lucy","Le prénom est dans le titre.","N","Comme le célèbre squelette de 3 millions d'années."],
+ ["Gilbert Bécaud","Nathalie","Nathalie","Le prénom est le titre (une guide à Moscou).","N","Une guide sur la place Rouge."]]},
+{t:"Animaux, le retour", s:[
+ ["Elton John","Crocodile Rock","Le crocodile","Crocodile, dans le titre.","E","Grande gueule pleine de dents, il vit dans les fleuves."],
+ ["KT Tunstall","Black Horse and the Cherry Tree","Le cheval","Horse = cheval.","E","On le monte avec une selle."],
+ ["La Bande à Basile","La chenille","La chenille","Dans le titre.","T","Elle deviendra papillon."],
+ ["Stray Cats","Stray Cat Strut","Le chat","Cat = chat.","A","Il miaule."],
+ ["Pinkfong","Baby Shark","Le requin","Shark = requin.","E","Le prédateur des mers, avec un aileron."],
+ ["The Monkees","I'm a Believer","Le singe","Monkees, comme monkey = singe, dans le nom du groupe.","A","Il mange des bananes."],
+ ["Baha Men","Who Let the Dogs Out","Le chien","Dogs = chiens.","E","Ouaf ouaf."]]},
+{t:"Le temps qui passe", s:[
+ ["The Beatles","Yesterday","Hier","Yesterday = hier.","E","Le jour d'avant aujourd'hui."],
+ ["The Smashing Pumpkins","Today","Aujourd'hui","Today = aujourd'hui.","E","Ni hier ni demain."],
+ ["Andrea McArdle","Tomorrow","Demain","Tomorrow = demain (comédie musicale Annie).","E","Le jour d'après aujourd'hui."],
+ ["Cat Stevens","Morning Has Broken","Le matin","Morning = matin.","E","Le moment du petit déjeuner."],
+ ["Images","Les démons de minuit","Minuit","Dans le titre.","T","Douze coups sonnent."],
+ ["Bee Gees","Night Fever","La nuit","Night = nuit.","E","Quand on dort."],
+ ["Cyndi Lauper","Time After Time","Le temps","Time = temps.","E","Il passe, on ne peut pas le rattraper."]]},
+{t:"Le tour du monde, le retour", s:[
+ ["Toto Cutugno","L'italiano","L'Italie","L'Italien, dans le titre.","S","Le pays de la pizza."],
+ ["Sting","Englishman in New York","L'Angleterre","Englishman = Anglais.","E","Le pays de la reine Élisabeth II."],
+ ["The Cranberries","Zombie","L'Irlande","La chanson parle du conflit en Irlande du Nord.","S","Le pays du trèfle et de la Saint-Patrick."],
+ ["Los Del Rio","Macarena","L'Espagne","Groupe espagnol, tube de 1996.","S","Le pays du flamenco."],
+ ["Sérgio Mendes","Mas Que Nada","Le Brésil","Chantée en portugais du Brésil.","S","Le pays de la samba et du carnaval de Rio."],
+ ["Harry Belafonte","Jamaica Farewell","La Jamaïque","Dans le titre.","E","Le pays de Bob Marley."],
+ ["A.R. Rahman","Jai Ho","L'Inde","Chanson du film « Slumdog Millionaire », tourné à Bombay.","S","Le pays du Taj Mahal."]]},
+{t:"On danse !", s:[
+ ["Chubby Checker","The Twist","Le twist","Dans le titre.","E","On tourne les hanches comme pour s'essuyer avec une serviette."],
+ ["Kaoma","Lambada","La lambada","Dans le titre.","T","Danse brésilienne très collée, tube de l'été 1989."],
+ ["PSY","Gangnam Style","La danse du cheval","Le chanteur fait semblant de monter à cheval.","S","On fait comme si on était à cheval."],
+ ["Madonna","Vogue","Le voguing","Danse faite de poses de mannequin.","E","On prend des poses comme dans un magazine."],
+ ["Jacques Brel","La valse à mille temps","La valse","Dans le titre.","T","Danse à trois temps, à Vienne."],
+ ["DJ Casper","Cha Cha Slide","Le cha-cha","Dans le titre.","E","Danse cubaine au nom qui se répète."],
+ ["Thierry Hazard","Le jerk","Le jerk","Dans le titre.","T","Danse des années 60 avec des secousses."]]},
+{t:"Les nombres, le retour", s:[
+ ["Spin Doctors","Two Princes","2","Two = deux.","E","Une paire."],
+ ["Bob Marley & The Wailers","Three Little Birds","3","Three = trois.","E","Autant que de petits cochons dans le conte."],
+ ["Madonna","4 Minutes","4","Dans le titre.","E","Autant que de saisons."],
+ ["The Beatles","Eight Days a Week","8","Eight = huit.","E","Autant que de pattes d'araignée."],
+ ["Dolly Parton","9 to 5","9 (et 5)","De 9 h à 5 h de l'après-midi : les horaires de bureau.","E","Les horaires de travail au bureau."],
+ ["Taylor Swift","22","22","Dans le titre.","E","Deux fois onze."],
+ ["Vanessa Carlton","A Thousand Miles","1000","Thousand = mille.","E","Dix fois cent."]]},
+{t:"L'école", s:[
+ ["Alice Cooper","School's Out","Les grandes vacances","L'école est finie !","E","Le dernier jour avant l'été."],
+ ["The Jackson 5","ABC","L'alphabet","Les trois premières lettres.","E","On l'apprend au CP."],
+ ["Sam Cooke","Wonderful World","Les matières","Il ne connaît rien en histoire ni en biologie.","P","Histoire, géographie, sciences…"],
+ ["High School Musical Cast","We're All in This Together","Le lycée","Chanson de « High School Musical ».","S","Un film Disney où l'on chante à la cantine."],
+ ["Feist","1234","Compter","Elle compte jusqu'à quatre (repris dans Sesame Street).","E","1, 2, 3…"],
+ ["Peter Gabriel","The Book of Love","Le livre","Book = livre.","E","On le lit en classe."],
+ ["Georges Brassens","Les copains d'abord","Les copains","Dans le titre.","T","Ceux avec qui on joue à la récré."]]},
+{t:"Personnages célèbres", s:[
+ ["Dire Straits","Calling Elvis","Elvis Presley","Dans le titre.","T","Le King du rock'n'roll."],
+ ["Don McLean","Vincent","Van Gogh","La chanson parle de Vincent Van Gogh.","S","Un peintre qui s'est coupé l'oreille."],
+ ["Falco","Rock Me Amadeus","Mozart","Wolfgang Amadeus Mozart.","S","Un compositeur autrichien, enfant prodige."],
+ ["The Modern Lovers","Pablo Picasso","Picasso","Dans le titre.","T","Un peintre espagnol, inventeur du cubisme."],
+ ["Nat King Cole","Mona Lisa","La Joconde","Mona Lisa est le nom italien de la Joconde.","S","Un tableau du Louvre, au sourire mystérieux."],
+ ["The Special AKA","Free Nelson Mandela","Nelson Mandela","Dans le titre.","T","Président d'Afrique du Sud, emprisonné 27 ans."],
+ ["U2","Pride (In the Name of Love)","Martin Luther King","Hommage à Martin Luther King.","S","« I have a dream »."]]},
+{t:"Les fruits", s:[
+ ["Harry Belafonte","Day-O (The Banana Boat Song)","La banane","Banana = banane.","E","Le fruit préféré des singes."],
+ ["Harry Nilsson","Coconut","La noix de coco","Coconut = noix de coco.","E","Elle pousse en haut d'un palmier."],
+ ["Harry Styles","Kiwi","Le kiwi","Dans le titre.","E","Marron et poilu dehors, vert dedans."],
+ ["Fats Domino","Blueberry Hill","La myrtille","Blueberry = myrtille.","E","Petite baie bleue des bois."],
+ ["Little Richard","Tutti Frutti","Tous les fruits","« Tutti frutti » veut dire « tous les fruits » en italien.","S","Un parfum de glace aux fruits mélangés."],
+ ["Neil Diamond","Cherry, Cherry","La cerise","Cherry = cerise.","E","Petite, rouge, avec un noyau."],
+ ["U2","Lemon","Le citron","Lemon = citron.","E","Jaune et acide."]]},
+{t:"L'argent", s:[
+ ["Pink Floyd","Money","L'argent","Money = argent.","E","Le morceau commence par un bruit de caisse enregistreuse."],
+ ["Jessie J","Price Tag","Le prix","Price tag = étiquette de prix.","E","Ce qui est écrit sur l'étiquette."],
+ ["Travie McCoy","Billionaire","Le milliardaire","Dans le titre.","E","Bien plus riche qu'un millionnaire."],
+ ["Johnny Cash","Ring of Fire","Le cash","Cash = argent liquide, dans le nom du chanteur.","A","Des billets dans la poche, pas de carte bleue."],
+ ["Gwen Stefani","Rich Girl","Riche","Rich = riche.","E","Le contraire de pauvre."],
+ ["Bing Crosby","Pennies from Heaven","Les centimes","Pennies = petites pièces.","E","Les plus petites pièces de monnaie."],
+ ["The Beatles","Can't Buy Me Love","Acheter","Buy = acheter.","E","Ce qu'on fait au magasin."]]},
+{t:"Les styles de musique", s:[
+ ["Joan Jett & the Blackhearts","I Love Rock 'N Roll","Le rock","Dans le titre.","E","Guitares électriques et Elvis."],
+ ["The Sugarhill Gang","Rapper's Delight","Le rap","Rapper = rappeur.","E","On parle en rythme."],
+ ["Lipps Inc.","Funkytown","Le funk","Dans le titre.","E","Une basse qui groove, comme James Brown."],
+ ["The Trammps","Disco Inferno","Le disco","Dans le titre.","E","Boule à facettes et pattes d'éléphant."],
+ ["Arthur Conley","Sweet Soul Music","La soul","Dans le titre.","E","La musique d'Aretha Franklin et d'Otis Redding."],
+ ["M","Pop Muzik","La pop","Dans le titre.","E","Musique populaire, celle des hit-parades."],
+ ["John Denver","Take Me Home, Country Roads","La country","Dans le titre.","E","Chapeaux de cow-boy et banjos."]]},
+{t:"La nature", s:[
+ ["Marvin Gaye & Tammi Terrell","Ain't No Mountain High Enough","La montagne","Mountain = montagne.","E","On y fait du ski."],
+ ["Sting","Desert Rose","Le désert","Desert = désert.","E","Du sable à perte de vue."],
+ ["Guns N' Roses","Welcome to the Jungle","La jungle","Jungle, dans le titre.","E","Forêt tropicale pleine de lianes."],
+ ["Tom Jones","Green, Green Grass of Home","L'herbe","Grass = herbe.","E","On la tond l'été."],
+ ["Damien Rice","Volcano","Le volcan","Dans le titre.","E","Il crache de la lave."],
+ ["The Cure","A Forest","La forêt","Forest = forêt.","E","Beaucoup d'arbres ensemble."],
+ ["Led Zeppelin","Over the Hills and Far Away","Les collines","Hills = collines.","E","Plus petites que des montagnes."]]},
+{t:"Jeux et jouets", s:[
+ ["Aqua","Barbie Girl","Barbie","Dans le titre.","E","Une poupée blonde et son ami Ken."],
+ ["Ed Sheeran","Lego House","Les Lego","Dans le titre.","E","Petites briques qui s'emboîtent."],
+ ["Martika","Toy Soldiers","Les soldats de plomb","Toy soldiers = soldats jouets.","E","De petits militaires alignés."],
+ ["Lady Gaga","Poker Face","Le poker","Dans le titre.","E","Jeu de cartes où l'on bluffe."],
+ ["Jessie J","Domino","Les dominos","Dans le titre.","E","Petites pièces noires à points blancs."],
+ ["Murray Head","One Night in Bangkok","Les échecs","Chanson de la comédie musicale « Chess » (échecs).","S","Roi, reine, fou, cavalier…"],
+ ["SHAED","Trampoline","Le trampoline","Dans le titre.","E","On saute dessus dans le jardin."]]},
+{t:"Comédies musicales françaises", s:[
+ ["Garou","Belle","Notre-Dame de Paris","Chantée par Quasimodo, Frollo et Phoebus.","C","Un bossu qui sonne les cloches."],
+ ["Claude Dubois","Le blues du businessman","Starmania","Comédie musicale de Michel Berger.","C","Un opéra-rock de Michel Berger et Luc Plamondon."],
+ ["Damien Sargue","Aimer","Roméo et Juliette","Comédie musicale de Gérard Presgurvic.","C","Deux amoureux de familles ennemies à Vérone."],
+ ["Daniel Lévi","L'envie d'aimer","Les Dix Commandements","Comédie musicale sur Moïse.","C","Moïse et la mer Rouge."],
+ ["Emmanuel Moire","Être à la hauteur","Le Roi Soleil","Comédie musicale sur Louis XIV.","C","Un roi qui construit Versailles."],
+ ["Mikelangelo Loconte","Tatoue-moi","Mozart, l'opéra rock","Comédie musicale sur Mozart.","C","Un compositeur autrichien en version rock."],
+ ["Anne Hathaway","I Dreamed a Dream","Les Misérables","Chantée par Fantine.","C","Jean Valjean, Cosette et les Thénardier."]]},
+{t:"Comédies musicales de Broadway", s:[
+ ["Elaine Paige","Memory","Cats","Chantée par la vieille chatte Grizabella.","C","Des chats qui chantent la nuit."],
+ ["Madonna","Don't Cry for Me Argentina","Evita","Madonna joue Eva Perón au cinéma.","C","La femme d'un président argentin."],
+ ["ABBA","Mamma Mia","Mamma Mia!","La comédie musicale est construite avec des chansons d'ABBA.","C","Un mariage sur une île grecque et trois papas possibles."],
+ ["John Travolta & Olivia Newton-John","Summer Nights","Grease","Danny et Sandy racontent leur été.","C","Blousons noirs, lycée américain des années 50."],
+ ["Sarah Brightman & Michael Crawford","The Phantom of the Opera","Le Fantôme de l'Opéra","Chanson-titre.","C","Un homme masqué caché sous l'Opéra de Paris."],
+ ["The 5th Dimension","Aquarius / Let the Sunshine In","Hair","Chanson de la comédie musicale hippie.","C","Des hippies aux cheveux longs."],
+ ["Keala Settle","This Is Me","The Greatest Showman","Chantée par la femme à barbe.","C","Le fondateur d'un grand cirque américain."]]},
+{t:"Les couleurs", s:[
+ ["Coldplay","Yellow","Jaune","Yellow = jaune.","E","La couleur du soleil et des poussins."],
+ ["Amy Winehouse","Back to Black","Noir","Black = noir.","E","La couleur de la nuit."],
+ ["Chris de Burgh","The Lady in Red","Rouge","Red = rouge.","E","La couleur des tomates."],
+ ["Booker T. & the M.G.'s","Green Onions","Vert","Green = vert.","E","La couleur de l'herbe."],
+ ["Eiffel 65","Blue (Da Ba Dee)","Bleu","Blue = bleu.","E","La couleur du ciel."],
+ ["Aerosmith","Pink","Rose","Pink = rose.","E","La couleur de la panthère célèbre."],
+ ["Bing Crosby","White Christmas","Blanc","White = blanc.","E","La couleur de la neige."]]},
+{t:"Dans la maison", s:[
+ ["Madness","Our House","La maison","House = maison.","E","Le lieu où l'on habite."],
+ ["The Drifters","Up on the Roof","Le toit","Roof = toit.","E","Tout en haut, avec des tuiles."],
+ ["The Beatles","Octopus's Garden","Le jardin","Garden = jardin.","E","Dehors, avec des fleurs et une pelouse."],
+ ["Led Zeppelin","Stairway to Heaven","L'escalier","Stairway = escalier.","E","On le monte marche par marche."],
+ ["The Beach Boys","In My Room","La chambre","Room = chambre.","E","La pièce où l'on dort."],
+ ["Tom Petty","Walls","Les murs","Walls = murs.","E","On y accroche des tableaux."],
+ ["Bon Jovi","Bed of Roses","Le lit","Bed = lit.","E","On s'y couche le soir."]]},
+{t:"Gourmandises et bons plats", s:[
+ ["Jimmy Buffett","Cheeseburger in Paradise","Le hamburger","Cheeseburger, dans le titre.","E","Un pain rond, un steak, du fromage."],
+ ["Dee Dee Sharp","Mashed Potato Time","La purée","Mashed potato = purée de pommes de terre.","E","Des pommes de terre écrasées."],
+ ["Hank Williams","Jambalaya (On the Bayou)","Le jambalaya","Plat de riz de Louisiane, dans le titre.","E","Plat de riz épicé de La Nouvelle-Orléans."],
+ ["Sarah McLachlan","Ice Cream","La glace","Ice cream = crème glacée.","E","Elle fond au soleil."],
+ ["The Archies","Sugar, Sugar","Le sucre","Sugar = sucre.","E","On en met dans le café."],
+ ["ABBA","Honey, Honey","Le miel","Honey = miel.","E","Les abeilles le fabriquent."],
+ ["DNCE","Cake by the Ocean","Le gâteau","Cake = gâteau.","E","On y met des bougies pour un anniversaire."]]},
+{t:"Le sport, le retour", s:[
+ ["Queen","We Are the Champions","Les champions","Dans le titre.","E","Ceux qui gagnent la coupe."],
+ ["Simon & Garfunkel","The Boxer","Le boxeur","Boxer = boxeur.","E","Il porte des gants sur un ring."],
+ ["Kate Bush","Running Up That Hill","La course","Running = courir.","E","On la fait en baskets, le plus vite possible."],
+ ["Green Day","Basket Case","Le basket","Basket, dans le titre (piège : ici, « basket case » veut dire « paumé »).","E","Un panier, un ballon orange."],
+ ["Van Halen","Jump","Le saut","Jump = sauter.","E","En hauteur ou en longueur."],
+ ["Lorde","Tennis Court","Le tennis","Tennis court = court de tennis.","E","Une raquette, une balle jaune, un filet."],
+ ["Queen","Bicycle Race","Le cyclisme","Bicycle race = course de vélo.","E","On pédale."]]},
+{t:"Les vacances", s:[
+ ["Cliff Richard","Summer Holiday","Les vacances d'été","Summer holiday = vacances d'été.","E","Juillet et août, sans école."],
+ ["Gilbert Montagné","Les sunlights des tropiques","Les tropiques","Dans le titre.","T","Des pays chauds avec des palmiers."],
+ ["The Beach Boys","Kokomo","La plage","Une île imaginaire des Caraïbes, avec ses plages.","S","Sable chaud et parasol."],
+ ["Wham!","Club Tropicana","Le club de vacances","Club, dans le titre.","E","Un hôtel avec piscine et animateurs."],
+ ["Arrow","Hot Hot Hot","La chaleur","Hot = chaud.","E","Le contraire du froid."],
+ ["Joe Dassin","L'été indien","L'été","Dans le titre.","T","La saison la plus chaude."],
+ ["Rupert Holmes","Escape (The Piña Colada Song)","La piña colada","Cocktail ananas-coco, dans le titre.","E","Un cocktail à l'ananas et à la noix de coco."]]},
+{t:"L'esprit de Noël", s:[
+ ["Tino Rossi","Petit papa Noël","Le Père Noël","Dans le titre.","T","Il descend par la cheminée."],
+ ["Gene Autry","Rudolph the Red-Nosed Reindeer","Le renne","Reindeer = renne.","E","Il tire le traîneau, et l'un d'eux a le nez rouge."],
+ ["Gene Autry","Frosty the Snowman","Le bonhomme de neige","Snowman = bonhomme de neige.","E","Une carotte pour le nez."],
+ ["Bobby Helms","Jingle Bell Rock","Les clochettes","Jingle bells = clochettes.","E","Elles tintent sur le traîneau."],
+ ["Mariah Carey","All I Want for Christmas Is You","Les cadeaux","Elle ne veut pas de cadeaux, juste toi.","P","On les ouvre au pied du sapin."],
+ ["Dean Martin","Let It Snow! Let It Snow! Let It Snow!","La neige","Snow = neige.","E","Blanche et froide, on fait des boules avec."],
+ ["José Feliciano","Feliz Navidad","Joyeux Noël","« Joyeux Noël » en espagnol.","S","Ce qu'on se souhaite le 24 au soir."]]},
+{t:"Les métiers, le retour", s:[
+ ["Boris Vian","Le déserteur","Le soldat","Un soldat qui refuse de partir à la guerre.","S","Il porte un uniforme et part à la guerre."],
+ ["Daryl Hall & John Oates","Private Eyes","Le détective","Private eye = détective privé.","E","Il mène l'enquête, comme Sherlock Holmes."],
+ ["Glen Campbell","Rhinestone Cowboy","Le cow-boy","Cowboy, dans le titre.","E","Il garde des vaches à cheval."],
+ ["Monty Python","The Lumberjack Song","Le bûcheron","Lumberjack = bûcheron.","E","Il coupe des arbres avec une hache."],
+ ["Steve Martin","Dentist!","Le dentiste","Dans le titre (film « La Petite Boutique des horreurs »).","E","Il soigne les caries."],
+ ["RuPaul","Supermodel (You Better Work)","Le mannequin","Supermodel = top-modèle.","E","Il défile sur un podium."],
+ ["Johnny Rivers","Secret Agent Man","L'agent secret","Secret agent = agent secret.","E","Un espion, comme James Bond."]]},
+{t:"Frissons d'Halloween", s:[
+ ["Bobby \"Boris\" Pickett","Monster Mash","Les monstres","Monster = monstre.","E","Ils se cachent sous le lit."],
+ ["Warren Zevon","Werewolves of London","Le loup-garou","Werewolves = loups-garous.","E","Il se transforme les soirs de pleine lune."],
+ ["Eagles","Witchy Woman","La sorcière","Witchy = de sorcière.","E","Elle vole sur un balai."],
+ ["The Specials","Ghost Town","Le fantôme","Ghost = fantôme.","E","Un drap blanc qui fait « Bouh ! »."],
+ ["The Edgar Winter Group","Frankenstein","Frankenstein","Dans le titre.","T","Un monstre fabriqué par un savant."],
+ ["Olivia Rodrigo","vampire","Le vampire","Vampire, dans le titre.","E","Il boit du sang et craint l'ail."],
+ ["Stevie Wonder","Superstition","La superstition","Dans le titre.","E","Un chat noir, un miroir cassé, le vendredi 13."]]},
+{t:"La route", s:[
+ ["Deep Purple","Highway Star","L'autoroute","Highway = autoroute.","E","Il faut payer au péage."],
+ ["The Cars","Drive","Conduire","Drive = conduire.","E","On le fait avec un permis."],
+ ["Gary Numan","Cars","Les voitures","Cars = voitures.","E","Quatre roues et un volant."],
+ ["Steppenwolf","Born to Be Wild","La moto","Chanson du film de motards « Easy Rider ».","S","Deux roues, un casque, un blouson de cuir."],
+ ["Wilson Pickett","Mustang Sally","La Mustang","La Ford Mustang, une voiture américaine.","S","Une voiture de sport américaine, et aussi un cheval sauvage."],
+ ["Natalie Cole","Pink Cadillac","La Cadillac","Une marque de voiture américaine.","S","Une grosse voiture américaine, ici rose."],
+ ["Talking Heads","Road to Nowhere","La route","Road = route.","E","On la prend pour partir en vacances."]]},
+{t:"Les oiseaux", s:[
+ ["Steve Miller Band","Fly Like an Eagle","L'aigle","Eagle = aigle.","E","Le roi des oiseaux, symbole des États-Unis."],
+ ["Bobby Day","Rockin' Robin","Le rouge-gorge","Robin = rouge-gorge.","E","Petit oiseau à la poitrine orangée."],
+ ["Camille Saint-Saëns","Le cygne","Le cygne","Extrait du « Carnaval des animaux ».","K","Grand oiseau blanc au long cou, sur les lacs."],
+ ["Fleetwood Mac","Albatross","L'albatros","Dans le titre.","E","Le plus grand oiseau marin."],
+ ["Prince","When Doves Cry","La colombe","Doves = colombes.","E","Oiseau blanc, symbole de la paix."],
+ ["Gioachino Rossini","La gazza ladra","La pie","« La pie voleuse », opéra de Rossini.","K","Un oiseau noir et blanc qui vole les objets brillants."],
+ ["Katy Perry","Hummingbird Heartbeat","Le colibri","Hummingbird = colibri.","E","Le plus petit oiseau du monde, il fait du surplace devant les fleurs."]]},
+{t:"La technologie", s:[
+ ["Kraftwerk","Computer Love","L'ordinateur","Computer = ordinateur.","E","Un clavier, une souris, un écran."],
+ ["Daft Punk","Robot Rock","Le robot","Robot, dans le titre.","E","Une machine qui imite les humains."],
+ ["Kraftwerk","Pocket Calculator","La calculatrice","Pocket calculator = calculatrice de poche.","E","Elle fait les additions à notre place."],
+ ["Orchestral Manoeuvres in the Dark","Electricity","L'électricité","Dans le titre.","E","Elle sort de la prise."],
+ ["Imagine Dragons","Radioactive","La radioactivité","Dans le titre.","E","Marie Curie l'a étudiée."],
+ ["The Chainsmokers","#SELFIE","Le selfie","Dans le titre.","E","Une photo de soi avec son téléphone."],
+ ["Lana Del Rey","Video Games","Les jeux vidéo","Video games = jeux vidéo.","E","Une manette et une console."]]},
+{t:"Les années", s:[
+ ["Bowling For Soup","1985","1985","Le titre est une année.","E","Le milieu des années 80."],
+ ["The Smashing Pumpkins","1979","1979","Le titre est une année.","E","La dernière année des années 70."],
+ ["Zager & Evans","In the Year 2525","2525","Une année du futur.","E","Une année très lointaine dans le futur."],
+ ["James Blunt","1973","1973","Le titre est une année.","E","Une année du milieu des années 70."],
+ ["David Bowie","1984","1984","Le titre est une année (et un roman de George Orwell).","E","Le titre d'un roman célèbre de George Orwell."],
+ ["Phoenix","1901","1901","Le titre est une année.","E","La première année du XXe siècle."],
+ ["The Stooges","1969","1969","Le titre est une année.","E","L'année des premiers pas sur la Lune."]]},
+{t:"Grands compositeurs", s:[
+ ["Ludwig van Beethoven","Für Elise","Beethoven","« La Lettre à Élise ».","K","Un compositeur allemand devenu sourd."],
+ ["Wolfgang Amadeus Mozart","Rondo alla turca","Mozart","« La Marche turque ».","K","Un compositeur autrichien, enfant prodige."],
+ ["Maurice Ravel","Boléro","Ravel","Le « Boléro », le même thème répété de plus en plus fort.","K","Un compositeur français, et un même air répété de plus en plus fort."],
+ ["Antonio Vivaldi","The Four Seasons: Spring","Vivaldi","« Le Printemps », des « Quatre Saisons ».","K","Un compositeur italien de Venise et les saisons."],
+ ["Georges Bizet","Carmen: Habanera","Bizet","L'air de « Carmen », « L'amour est un oiseau rebelle ».","K","Un opéra français qui se passe à Séville."],
+ ["Pyotr Ilyich Tchaikovsky","Swan Lake","Tchaïkovski","« Le Lac des cygnes ».","K","Un compositeur russe et un ballet de cygnes."],
+ ["Claude Debussy","Clair de lune","Debussy","« Clair de lune », pour piano.","K","Un compositeur français et un astre de la nuit."]]},
+{t:"Contes et légendes", s:[
+ ["Téléphone","Cendrillon","Cendrillon","Dans le titre.","T","Elle perd une pantoufle de verre à minuit."],
+ ["Jefferson Airplane","White Rabbit","Alice au pays des merveilles","Le lapin blanc d'Alice.","S","Une petite fille suit un lapin blanc pressé."],
+ ["Sam The Sham & The Pharaohs","Li'l Red Riding Hood","Le Petit Chaperon rouge","Red riding hood = chaperon rouge.","E","Une fillette, une galette et un loup."],
+ ["Lana Del Rey","Once Upon a Dream","La Belle au bois dormant","Chanson du film « Maléfique ».","F","Une princesse qui dort cent ans."],
+ ["Cliff Edwards","When You Wish Upon a Star","Pinocchio","Chantée par Jiminy Cricket.","F","Son nez s'allonge quand il ment."],
+ ["Smash Mouth","All Star","Shrek","Chanson du début du film.","F","Un ogre vert et un âne qui parle."],
+ ["Elton John","Goodbye Yellow Brick Road","Le Magicien d'Oz","La route de briques jaunes du Magicien d'Oz.","S","Dorothy, un épouvantail et un lion peureux."]]},
+{t:"Les régions de France", s:[
+ ["Pierre Bachelet","Les corons","Le Nord","Les maisons de mineurs du Nord.","S","Le pays des mines de charbon et des Ch'tis."],
+ ["Nolwenn Leroy","Tri Martolod","La Bretagne","Chanson traditionnelle bretonne.","S","Crêpes, binious et phares."],
+ ["Nino Ferrer","Le Sud","Le Sud","Dans le titre.","T","Là où chantent les cigales."],
+ ["Jean Ferrat","La montagne","La montagne (Ardèche)","Elle parle des villages de l'Ardèche.","T","Les jeunes quittent les villages pour la ville."],
+ ["Georges Brassens","Chanson pour l'Auvergnat","L'Auvergne","Dans le titre.","T","Région des volcans et du fromage de Saint-Nectaire."],
+ ["Laurent Voulzy","Belle-Île-en-Mer, Marie-Galante","Les îles","Deux îles françaises, dans le titre.","T","Une est en Bretagne, l'autre aux Antilles."],
+ ["Barbara","Nantes","Nantes","Dans le titre.","T","La ville des ducs de Bretagne et des machines de l'île."]]},
+{t:"Les questions", s:[
+ ["Pixies","Where Is My Mind?","Où ?","Where = où.","E","Pour demander un lieu."],
+ ["4 Non Blondes","What's Up?","Quoi ?","What = quoi.","E","Pour demander une chose."],
+ ["The Who","Who Are You","Qui ?","Who = qui (et c'est aussi le nom du groupe).","E","Pour demander une personne."],
+ ["Annie Lennox","Why","Pourquoi ?","Why = pourquoi.","E","Pour demander une raison."],
+ ["The Beatles","When I'm Sixty-Four","Quand ?","When = quand.","E","Pour demander un moment."],
+ ["Bee Gees","How Deep Is Your Love","Comment ?","How = comment.","E","Pour demander la manière."],
+ ["Scooter","How Much Is the Fish?","Combien ?","How much = combien.","E","Pour demander un prix."]]},
+{t:"Insectes et petites bêtes", s:[
+ ["Sugar Ray","Fly","La mouche","Fly = mouche (et voler).","E","Elle bourdonne autour de la confiture."],
+ ["System Of A Down","Spiders","L'araignée","Spiders = araignées.","E","Elle a huit pattes et tisse une toile."],
+ ["Nikolai Rimsky-Korsakov","Flight of the Bumblebee","Le bourdon","« Le Vol du bourdon ».","K","Une grosse abeille poilue."],
+ ["Mariachi Vargas de Tecalitlán","La cucaracha","Le cafard","Cucaracha = cafard en espagnol.","S","Il se cache dans les cuisines la nuit."],
+ ["Scorpions","Wind of Change","Le scorpion","Le nom du groupe.","A","Il a une queue avec un dard."],
+ ["The Beatles","Let It Be","Le scarabée","Beatles vient de beetles = scarabées.","A","Un insecte à carapace, sacré en Égypte."],
+ ["Owl City","Fireflies","La luciole","Fireflies = lucioles.","E","Un insecte qui brille la nuit."]]},
+{t:"Le sommeil", s:[
+ ["Aerosmith","Dream On","Le rêve","Dream = rêve.","E","Ce qu'on fait en dormant."],
+ ["The Chordettes","Mr. Sandman","Le marchand de sable","Sandman = marchand de sable.","E","Il passe le soir pour endormir les enfants."],
+ ["Faithless","Insomnia","L'insomnie","Dans le titre.","E","Quand on n'arrive pas à dormir."],
+ ["The Cure","Lullaby","La berceuse","Lullaby = berceuse.","E","On la chante aux bébés pour les endormir."],
+ ["Avicii","Wake Me Up","Le réveil","Wake me up = réveille-moi.","E","Il sonne le matin."],
+ ["DJ Jazzy Jeff & The Fresh Prince","A Nightmare on My Street","Le cauchemar","Nightmare = cauchemar.","E","Un mauvais rêve."],
+ ["Santo & Johnny","Sleep Walk","Le somnambule","Sleepwalk = marcher en dormant.","E","Il marche en dormant."]]},
+{t:"La politesse", s:[
+ ["Adele","Hello","Bonjour","Hello = bonjour.","E","Ce qu'on dit en arrivant."],
+ ["Dido","Thank You","Merci","Thank you = merci.","E","Ce qu'on dit quand on reçoit un cadeau."],
+ ["The Beatles","Please Please Me","S'il vous plaît","Please = s'il te plaît.","E","Le mot magique pour demander."],
+ ["Justin Bieber","Sorry","Pardon","Sorry = désolé.","E","Ce qu'on dit quand on bouscule quelqu'un."],
+ ["Joe Dassin","Salut les amoureux","Salut","Dans le titre.","T","Bonjour, entre copains."],
+ ["*NSYNC","Bye Bye Bye","Au revoir","Bye = au revoir.","E","Ce qu'on dit en partant."],
+ ["My Chemical Romance","Welcome to the Black Parade","Bienvenue","Welcome = bienvenue.","E","Ce qu'on dit à un invité qui arrive."]]},
+{t:"La magie", s:[
+ ["Steve Miller Band","Abracadabra","La formule magique","Dans le titre.","T","Les magiciens la prononcent avant un tour."],
+ ["Screamin' Jay Hawkins","I Put a Spell on You","Le sortilège","Spell = sort.","E","Ce que lance une sorcière."],
+ ["Focus","Hocus Pocus","Le tour de passe-passe","« Hocus pocus », formule de magicien.","E","Ce que fait un magicien avec un chapeau."],
+ ["Steppenwolf","Magic Carpet Ride","Le tapis volant","Magic carpet = tapis magique.","E","Aladdin voyage dessus."],
+ ["Christina Aguilera","Genie in a Bottle","Le génie","Genie = génie.","E","Il sort d'une lampe et exauce trois vœux."],
+ ["The Jimi Hendrix Experience","Voodoo Child (Slight Return)","Le vaudou","Voodoo = vaudou.","E","Magie d'Haïti, avec des poupées et des aiguilles."],
+ ["Santana","Black Magic Woman","La magie noire","Black magic = magie noire.","E","La magie des méchants sorciers."]]}
+];
+
+THEMES.push(...NEW_THEMES);
+
+/* ---------- Indices à la demande ---------- */
+function drawHints(){
+  const box=document.getElementById("hints"); if(!box) return;
+  if(S.screen!=="play"||S.revealed){ box.innerHTML=""; return; }
+  const song=THEMES[S.theme].s[S.idx], n=S.h||0;
+  let html="";
+  if(n>=1) html+=`<div class="hint"><span class="eyebrow">Indice 1</span><span>${esc(HINT1[song[4]]||"")}</span></div>`;
+  if(n>=2) html+=`<div class="hint"><span class="eyebrow">Indice 2</span><span>${esc(song[5]||"")}</span></div>`;
+  if(n<2) html+=`<button class="hintbtn" id="hintb">💡 Indice ${n+1}</button>`;
+  box.innerHTML=html;
+  const b=document.getElementById("hintb");
+  if(b) b.onclick=()=>{ S.h=(S.h||0)+1; save(); drawHints(); };
+}
+
 /* ---------- Spotify ---------- */
 const CLIENT_ID = "6b2284bb0701478f9eb22fbd5e5b5134";
 const REDIRECT = location.origin + location.pathname;
@@ -381,8 +844,8 @@ async function playSong(artist,title){
     setMsg("La musique ne démarre pas sur « "+dev.name+" ». "+diag+" Ouvrez Spotify sur cet appareil, lancez un titre, revenez, puis réessayez.",true);
   }catch(e){ setMsg(errText(e),true); }
 }
-async function cmd(path,okMsg){
-  try{ const r=await api("PUT",path); if(!r.ok&&r.status!==204) throw r; setMsg(okMsg); }
+async function cmd(path,okMsg,after){
+  try{ const r=await api("PUT",path); if(!r.ok&&r.status!==204) throw r; setMsg(okMsg); if(after) after(); }
   catch(e){ setMsg(errText(e),true); }
 }
 function setMsg(t,bad){const el=document.getElementById("msg"); if(el){el.textContent=t; el.className="msg"+(bad?" bad":"")}}
@@ -468,7 +931,7 @@ function pick(){
   back.onclick=()=>{S.screen="setup";render()};
   resetp.onclick=()=>{S.played=[];render()};
 }
-function start(i){S.theme=i;S.idx=0;S.revealed=false;S.pts=S.teams.map(()=>0);S.screen="play";render()}
+function start(i){S.theme=i;S.idx=0;S.revealed=false;S.h=0;S.pts=S.teams.map(()=>0);S.screen="play";render()}
 
 function play(){
   const th=THEMES[S.theme], [a,t,ans,why]=th.s[S.idx];
@@ -481,6 +944,7 @@ function play(){
     <button class="spotbtn" id="playb">▶ Lancer le titre</button>
     <div class="row"><button id="pause">⏸ Pause</button><button id="resume">⏵ Reprendre</button></div>
     <span class="msg" id="msg" aria-live="polite"></span>
+    <div class="hints" id="hints" aria-live="polite"></div>
     ${S.revealed?`
       <div class="answer">
         <span class="eyebrow">Réponse</span>
@@ -499,8 +963,9 @@ function play(){
   pause.onclick=()=>cmd("/me/player/pause","Pause.");
   resume.onclick=()=>cmd("/me/player/play","♪ Lecture en cours");
   if(!S.revealed) rev.onclick=()=>{S.revealed=true;render()};
+  drawHints();
   app.querySelectorAll("[data-w]").forEach(b=>b.onclick=()=>{
-    const w=+b.dataset.w; if(w>=0)S.pts[w]++;
+    const w=+b.dataset.w; if(w>=0)S.pts[w]++; S.h=0;
     api("PUT","/me/player/pause").catch(()=>{});
     if(S.idx<6){S.idx++;S.revealed=false}else{finishSet()}
     render();
