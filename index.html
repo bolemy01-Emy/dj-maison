@@ -366,16 +366,19 @@ async function playSong(artist,title){
       await api("PUT","/me/player",{device_ids:[dev.id],play:false});
       await wait(800);
     }
+    let np=null;
     for(let essai=1; essai<=2; essai++){
       const p=await api("PUT","/me/player/play?device_id="+encodeURIComponent(dev.id),{uris:[uri]});
       if(!p.ok && p.status!==204) throw p;
-      await wait(1500);
-      const np=await nowPlaying();
-      if(np && np.is_playing && np.item && np.item.uri===uri){
-        setMsg("♪ Lecture sur : "+(np.device?.name||dev.name)); return;
+      for(let k=0;k<3;k++){
+        await wait(1200);
+        np=await nowPlaying();
+        if(np && np.is_playing){ setMsg("♪ Lecture sur : "+(np.device?.name||dev.name)); return; }
       }
     }
-    setMsg("Spotify a reçu la commande mais ne joue pas. Ouvrez l'appli Spotify quelques secondes (au premier plan), revenez, puis relancez le titre.",true);
+    const diag = np ? ("Spotify indique : appareil « "+(np.device?.name||"?")+" », lecture "+(np.is_playing?"en cours":"arrêtée")+".")
+                    : "Spotify n'indique aucune lecture en cours.";
+    setMsg("La musique ne démarre pas sur « "+dev.name+" ». "+diag+" Ouvrez Spotify sur cet appareil, lancez un titre, revenez, puis réessayez.",true);
   }catch(e){ setMsg(errText(e),true); }
 }
 async function cmd(path,okMsg){
