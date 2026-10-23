@@ -89,6 +89,7 @@ a.spotlink{display:flex;align-items:center;justify-content:center;text-decoratio
 </head>
 <body>
 <div class="wrap" id="app"></div>
+<p class="muted small center" style="margin:24px 0 0">DJ Maison · version 8</p>
 <script>
 const THEMES = [
 {t:"La météo", s:[
@@ -843,11 +844,7 @@ async function playSong(artist,title){
     }
     const diag = np ? ("Spotify indique : appareil « "+(np.device?.name||"?")+" », lecture "+(np.is_playing?"en cours":"arrêtée")+".")
                     : "Spotify n'indique aucune lecture en cours.";
-    if(dev.type==="Smartphone"){
-      showOpen(uri,"Le téléphone refuse de démarrer la musique en arrière-plan. Touchez le bouton ci-dessous : Spotify s'ouvre sur le bon titre, lancez-le, puis revenez au jeu.");
-    } else {
-      setMsg("La musique ne démarre pas sur « "+dev.name+" ». "+diag+" Ouvrez Spotify sur cet appareil, lancez un titre, revenez, puis réessayez.",true);
-    }
+    showOpen(uri,"La musique ne démarre pas toute seule sur « "+dev.name+" » ("+dev.type+"). Touchez le bouton vert ci-dessous : Spotify s'ouvre sur le bon titre, lancez-le, puis revenez au jeu.");
   }catch(e){ setMsg(errText(e),true); }
 }
 async function cmd(path,okMsg,after){
@@ -858,7 +855,7 @@ function showOpen(uri,txt){
   setMsg(txt,true);
   const box=document.getElementById("openbox"); if(!box) return;
   const id=uri.split(":").pop();
-  box.innerHTML=`<a class="spotlink" href="https://open.spotify.com/track/${id}" target="_blank" rel="noopener">Ouvrir ce titre dans Spotify</a>`;
+  box.innerHTML=`<a class="spotlink" style="margin-top:4px" href="https://open.spotify.com/track/${id}" target="_blank" rel="noopener">Ouvrir ce titre dans Spotify</a>`;
 }
 function setMsg(t,bad){const el=document.getElementById("msg"); if(el){el.textContent=t; el.className="msg"+(bad?" bad":"")}}
 let flash="";
